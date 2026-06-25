@@ -21,6 +21,9 @@
 		A1B2C3D4E5F6789012345A0C /* ItemListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B0E /* ItemListView.swift */; };
 		A1B2C3D4E5F6789012345A0D /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B0F /* SearchView.swift */; };
 		A1B2C3D4E5F6789012345A0E /* AreaManageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B10 /* AreaManageView.swift */; };
+		A1B2C3D4E5F6789012345A0F /* ItemFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B11 /* ItemFormView.swift */; };
+		A1B2C3D4E5F6789012345A10 /* ItemFormValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B12 /* ItemFormValidator.swift */; };
+		A1B2C3D4E5F6789012345A11 /* ItemValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B13 /* ItemValidationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +53,9 @@
 		A1B2C3D4E5F6789012345B0E /* ItemListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemListView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345B0F /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345B10 /* AreaManageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaManageView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345B11 /* ItemFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemFormView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345B12 /* ItemFormValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemFormValidator.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345B13 /* ItemValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemValidationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +103,7 @@
 			children = (
 				A1B2C3D4E5F6789012345B06 /* ItemManageTests.swift */,
 				A1B2C3D4E5F6789012345B0A /* ItemCostCalculatorTests.swift */,
+				A1B2C3D4E5F6789012345B13 /* ItemValidationTests.swift */,
 			);
 			path = ItemManageTests;
 			sourceTree = "<group>";
@@ -135,6 +142,7 @@
 				A1B2C3D4E5F6789012345B0E /* ItemListView.swift */,
 				A1B2C3D4E5F6789012345B0F /* SearchView.swift */,
 				A1B2C3D4E5F6789012345B10 /* AreaManageView.swift */,
+				A1B2C3D4E5F6789012345B11 /* ItemFormView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -152,6 +160,7 @@
 				A1B2C3D4E5F6789012345B09 /* ItemCostCalculator.swift */,
 				A1B2C3D4E5F6789012345B0B /* ItemStatus.swift */,
 				A1B2C3D4E5F6789012345B0D /* ItemSortOption.swift */,
+				A1B2C3D4E5F6789012345B12 /* ItemFormValidator.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -258,6 +267,8 @@
 				A1B2C3D4E5F6789012345A0C /* ItemListView.swift in Sources */,
 				A1B2C3D4E5F6789012345A0D /* SearchView.swift in Sources */,
 				A1B2C3D4E5F6789012345A0E /* AreaManageView.swift in Sources */,
+				A1B2C3D4E5F6789012345A0F /* ItemFormView.swift in Sources */,
+				A1B2C3D4E5F6789012345A10 /* ItemFormValidator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,6 +278,7 @@
 			files = (
 				A1B2C3D4E5F6789012345A06 /* ItemManageTests.swift in Sources */,
 				A1B2C3D4E5F6789012345A08 /* ItemCostCalculatorTests.swift in Sources */,
+				A1B2C3D4E5F6789012345A11 /* ItemValidationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
