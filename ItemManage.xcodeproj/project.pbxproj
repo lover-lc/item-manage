@@ -13,6 +13,8 @@
 		A1B2C3D4E5F6789012345A04 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B04 /* ContentView.swift */; };
 		A1B2C3D4E5F6789012345A05 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B05 /* Assets.xcassets */; };
 		A1B2C3D4E5F6789012345A06 /* ItemManageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B06 /* ItemManageTests.swift */; };
+		A1B2C3D4E5F6789012345A07 /* ItemCostCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B09 /* ItemCostCalculator.swift */; };
+		A1B2C3D4E5F6789012345A08 /* ItemCostCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B0A /* ItemCostCalculatorTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,6 +36,8 @@
 		A1B2C3D4E5F6789012345B06 /* ItemManageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemManageTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345B07 /* ItemManage.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ItemManage.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F6789012345B08 /* ItemManageTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ItemManageTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F6789012345B09 /* ItemCostCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemCostCalculator.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345B0A /* ItemCostCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemCostCalculatorTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F6789012345B06 /* ItemManageTests.swift */,
+				A1B2C3D4E5F6789012345B0A /* ItemCostCalculatorTests.swift */,
 			);
 			path = ItemManageTests;
 			sourceTree = "<group>";
@@ -128,6 +133,7 @@
 		A1B2C3D4E5F6789012345F09 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F6789012345B09 /* ItemCostCalculator.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -227,6 +233,7 @@
 				A1B2C3D4E5F6789012345A02 /* Area.swift in Sources */,
 				A1B2C3D4E5F6789012345A03 /* Item.swift in Sources */,
 				A1B2C3D4E5F6789012345A04 /* ContentView.swift in Sources */,
+				A1B2C3D4E5F6789012345A07 /* ItemCostCalculator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +242,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F6789012345A06 /* ItemManageTests.swift in Sources */,
+				A1B2C3D4E5F6789012345A08 /* ItemCostCalculatorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
