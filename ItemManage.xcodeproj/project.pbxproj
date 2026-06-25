@@ -16,6 +16,7 @@
 		A1B2C3D4E5F6789012345A07 /* ItemCostCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B09 /* ItemCostCalculator.swift */; };
 		A1B2C3D4E5F6789012345A08 /* ItemCostCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B0A /* ItemCostCalculatorTests.swift */; };
 		A1B2C3D4E5F6789012345A09 /* ItemStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B0B /* ItemStatus.swift */; };
+		A1B2C3D4E5F6789012345A0A /* ModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B0C /* ModelContainer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +41,7 @@
 		A1B2C3D4E5F6789012345B09 /* ItemCostCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemCostCalculator.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345B0A /* ItemCostCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemCostCalculatorTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345B0B /* ItemStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemStatus.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345B0C /* ModelContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelContainer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +115,7 @@
 			children = (
 				A1B2C3D4E5F6789012345B02 /* Area.swift */,
 				A1B2C3D4E5F6789012345B03 /* Item.swift */,
+				A1B2C3D4E5F6789012345B0C /* ModelContainer.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -238,6 +241,7 @@
 				A1B2C3D4E5F6789012345A04 /* ContentView.swift in Sources */,
 				A1B2C3D4E5F6789012345A07 /* ItemCostCalculator.swift in Sources */,
 				A1B2C3D4E5F6789012345A09 /* ItemStatus.swift in Sources */,
+				A1B2C3D4E5F6789012345A0A /* ModelContainer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
