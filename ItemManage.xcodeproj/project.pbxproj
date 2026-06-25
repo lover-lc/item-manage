@@ -25,6 +25,7 @@
 		A1B2C3D4E5F6789012345A10 /* ItemFormValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B12 /* ItemFormValidator.swift */; };
 		A1B2C3D4E5F6789012345A11 /* ItemValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B13 /* ItemValidationTests.swift */; };
 		A1B2C3D4E5F6789012345A12 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B14 /* ItemDetailView.swift */; };
+		A1B2C3D4E5F6789012345A13 /* ItemRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345B15 /* ItemRowView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +59,7 @@
 		A1B2C3D4E5F6789012345B12 /* ItemFormValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemFormValidator.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345B13 /* ItemValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemValidationTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345B14 /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345B15 /* ItemRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemRowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +148,7 @@
 				A1B2C3D4E5F6789012345B10 /* AreaManageView.swift */,
 				A1B2C3D4E5F6789012345B11 /* ItemFormView.swift */,
 				A1B2C3D4E5F6789012345B14 /* ItemDetailView.swift */,
+				A1B2C3D4E5F6789012345B15 /* ItemRowView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -273,6 +276,7 @@
 				A1B2C3D4E5F6789012345A0F /* ItemFormView.swift in Sources */,
 				A1B2C3D4E5F6789012345A10 /* ItemFormValidator.swift in Sources */,
 				A1B2C3D4E5F6789012345A12 /* ItemDetailView.swift in Sources */,
+				A1B2C3D4E5F6789012345A13 /* ItemRowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
