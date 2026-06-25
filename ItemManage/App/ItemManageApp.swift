@@ -18,11 +18,7 @@ struct RootView: View {
         if hasCompletedOnboarding {
             ContentView()
         } else {
-            // Temporary placeholder until Task 11 — use simple Text onboarding placeholder
-            VStack {
-                Text("欢迎使用物品整理")
-                Button("开始使用") { hasCompletedOnboarding = true }
-            }
+            OnboardingView()
         }
     }
 }

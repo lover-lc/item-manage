@@ -89,7 +89,7 @@ struct AreaManageView: View {
                 }
             }
             .sheet(isPresented: $showingHelp) {
-                AreaHelpSheet()
+                OnboardingView(isPresentedAsSheet: true)
             }
         }
     }
@@ -154,50 +154,5 @@ struct AreaManageView: View {
         modelContext.delete(area)
         try? modelContext.save()
         areaToDelete = nil
-    }
-}
-
-private struct AreaHelpSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    private let pages: [(title: String, description: String, icon: String)] = [
-        ("记录物品", "添加物品并记录买入价格、使用时间和存放位置。", "shippingbox"),
-        ("位置管理", "按区域整理物品，随时查看每个区域的物品数量。", "folder"),
-        ("成本计算", "自动计算每日使用成本，帮你了解物品的实际价值。", "yensign.circle"),
-        ("搜索", "按名称、区域或具体位置快速找到物品。", "magnifyingglass"),
-    ]
-
-    var body: some View {
-        NavigationStack {
-            TabView {
-                ForEach(pages.indices, id: \.self) { index in
-                    let page = pages[index]
-                    VStack(spacing: 24) {
-                        Image(systemName: page.icon)
-                            .font(.system(size: 64))
-                            .foregroundStyle(.tint)
-                        Text(page.title)
-                            .font(.title2.bold())
-                        Text(page.description)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }
-            .tabViewStyle(.page)
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
-            .navigationTitle("使用帮助")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("关闭") {
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
