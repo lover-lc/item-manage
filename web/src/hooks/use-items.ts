@@ -14,7 +14,7 @@ export type ItemFilters = {
   categoryId?: string
 }
 
-const ITEM_SELECT = '*, area:areas(*), category:categories(*)'
+const ITEM_SELECT = '*, area:areas(*), category:categories(*), unit:units(*)'
 
 export function useItems(filters: ItemFilters = {}) {
   const { areaId, categoryId } = filters

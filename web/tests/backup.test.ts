@@ -26,16 +26,26 @@ const sampleBackup: BackupData = {
       createdAt: '2026-01-01T00:00:00.000Z',
     },
   ],
+  units: [
+    {
+      id: 'unit-1',
+      name: '千克',
+      isSystemReserved: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    },
+  ],
   items: [
     {
       id: 'item-1',
       name: '毛巾',
       purchasePrice: 29.9,
+      quantity: 2,
       startDate: '2026-01-01',
       endDate: null,
       expiryDate: null,
       areaId: 'area-1',
       categoryId: 'category-1',
+      unitId: 'unit-1',
       specificLocation: '柜子上层',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',
@@ -67,8 +77,25 @@ describe('validateBackupData', () => {
 
   it('rejects invalid version', () => {
     expect(
-      validateBackupData({ ...sampleBackup, version: 2 }),
+      validateBackupData({ ...sampleBackup, version: 99 }),
     ).toEqual({ ok: false, error: 'invalidVersion' })
+  })
+
+  it('accepts legacy v1 backup without units', () => {
+    const legacy = {
+      version: 1,
+      exportedAt: sampleBackup.exportedAt,
+      areas: sampleBackup.areas,
+      categories: sampleBackup.categories,
+      items: sampleBackup.items.map(({ quantity, unitId, ...item }) => item),
+    }
+    const result = validateBackupData(legacy)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.units).toEqual([])
+      expect(result.data.items[0]?.quantity).toBeNull()
+      expect(result.data.items[0]?.unitId).toBeNull()
+    }
   })
 
   it('rejects missing exportedAt', () => {

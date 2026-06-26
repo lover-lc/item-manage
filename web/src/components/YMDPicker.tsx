@@ -1,8 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useMemo, type ReactNode } from 'react'
+import Picker from 'react-mobile-picker'
 import { parseISODate, toISODate } from '../lib/date-utils'
 
+const PICKER_HEIGHT = 200
 const ITEM_HEIGHT = 40
-const PADDING_ITEMS = 2
+
+type PickerState = {
+  year: string
+  month: string
+  day: string
+}
+
+interface YMDPickerProps {
+  value: string
+  onChange: (value: string) => void
+  yearMin?: number
+  yearMax?: number
+}
 
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate()
@@ -17,85 +31,60 @@ function parseValue(iso: string): { year: number; month: number; day: number } {
   }
 }
 
-interface ScrollColumnProps {
-  items: number[]
-  value: number
-  onChange: (value: number) => void
-  format: (value: number) => string
-  label: string
+function toPickerState(iso: string): PickerState {
+  const { year, month, day } = parseValue(iso)
+  const maxDay = daysInMonth(year, month)
+  const safeDay = Math.min(day, maxDay)
+  return {
+    year: String(year),
+    month: String(month).padStart(2, '0'),
+    day: String(safeDay).padStart(2, '0'),
+  }
 }
 
-function ScrollColumn({ items, value, onChange, format, label }: ScrollColumnProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const scrolling = useRef(false)
-  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+function fromPickerState(state: PickerState): string {
+  const year = Number(state.year)
+  const month = Number(state.month)
+  const day = Number(state.day)
+  const maxDay = daysInMonth(year, month)
+  const safeDay = Math.min(day, maxDay)
+  return toISODate(new Date(year, month - 1, safeDay))
+}
 
-  const scrollToValue = useCallback(
-    (target: number, smooth = false) => {
-      const el = ref.current
-      if (!el) return
-      const index = items.indexOf(target)
-      if (index < 0) return
-      scrolling.current = true
-      el.scrollTo({
-        top: index * ITEM_HEIGHT,
-        behavior: smooth ? 'smooth' : 'instant',
-      })
-      window.setTimeout(() => {
-        scrolling.current = false
-      }, smooth ? 200 : 0)
-    },
-    [items],
-  )
-
-  useEffect(() => {
-    scrollToValue(value)
-  }, [value, scrollToValue])
-
-  function handleScroll() {
-    if (scrolling.current) return
-    const el = ref.current
-    if (!el) return
-
-    if (scrollTimer.current) clearTimeout(scrollTimer.current)
-    scrollTimer.current = setTimeout(() => {
-      const index = Math.round(el.scrollTop / ITEM_HEIGHT)
-      const clamped = Math.max(0, Math.min(index, items.length - 1))
-      const next = items[clamped]
-      el.scrollTo({ top: clamped * ITEM_HEIGHT, behavior: 'smooth' })
-      if (next !== value) onChange(next)
-    }, 80)
+function clampPickerState(state: PickerState, changedKey: string): PickerState {
+  if (changedKey !== 'year' && changedKey !== 'month') {
+    return state
   }
+  const year = Number(state.year)
+  const month = Number(state.month)
+  const maxDay = daysInMonth(year, month)
+  const day = Number(state.day)
+  if (day <= maxDay) {
+    return state
+  }
+  return {
+    ...state,
+    day: String(maxDay).padStart(2, '0'),
+  }
+}
 
+function PickerItemLabel({
+  children,
+  selected,
+}: {
+  children: ReactNode
+  selected: boolean
+}) {
   return (
-    <div className="relative flex-1">
-      <span className="sr-only">{label}</span>
-      <div
-        ref={ref}
-        onScroll={handleScroll}
-        className="h-[200px] overflow-y-auto scroll-smooth snap-y snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ scrollPaddingBlock: `${ITEM_HEIGHT * PADDING_ITEMS}px` }}
-      >
-        <div style={{ height: ITEM_HEIGHT * PADDING_ITEMS }} aria-hidden="true" />
-        {items.map((item) => (
-          <div
-            key={item}
-            className="flex h-10 snap-center items-center justify-center text-base leading-10 text-text"
-          >
-            {format(item)}
-          </div>
-        ))}
-        <div style={{ height: ITEM_HEIGHT * PADDING_ITEMS }} />
-      </div>
+    <div
+      className={[
+        'text-base tabular-nums leading-none',
+        selected ? 'font-medium text-text' : 'text-text-secondary',
+      ].join(' ')}
+    >
+      {children}
     </div>
   )
-}
-
-interface YMDPickerProps {
-  value: string
-  onChange: (value: string) => void
-  yearMin?: number
-  yearMax?: number
 }
 
 export default function YMDPicker({
@@ -104,58 +93,68 @@ export default function YMDPicker({
   yearMin = 1970,
   yearMax = 2100,
 }: YMDPickerProps) {
-  const { year, month, day } = parseValue(value)
+  const pickerValue = useMemo(() => toPickerState(value), [value])
 
   const years = useMemo(
-    () => Array.from({ length: yearMax - yearMin + 1 }, (_, i) => yearMin + i),
+    () => Array.from({ length: yearMax - yearMin + 1 }, (_, i) => String(yearMin + i)),
     [yearMin, yearMax],
   )
-  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), [])
-  const maxDay = daysInMonth(year, month)
+  const months = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')),
+    [],
+  )
+
+  const yearNum = Number(pickerValue.year)
+  const monthNum = Number(pickerValue.month)
+  const maxDay = daysInMonth(yearNum, monthNum)
   const days = useMemo(
-    () => Array.from({ length: maxDay }, (_, i) => i + 1),
+    () => Array.from({ length: maxDay }, (_, i) => String(i + 1).padStart(2, '0')),
     [maxDay],
   )
 
-  const clampedDay = Math.min(day, maxDay)
-
-  function emit(y: number, m: number, d: number) {
-    const max = daysInMonth(y, m)
-    const safeDay = Math.min(d, max)
-    onChange(toISODate(new Date(y, m - 1, safeDay)))
+  function handleChange(next: PickerState, key: string) {
+    const clamped = clampPickerState(next, key)
+    onChange(fromPickerState(clamped))
   }
 
   return (
-    <div className="relative">
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 border-y border-bg-hover bg-bg-hover/30" style={{ height: ITEM_HEIGHT }} />
-      <div className="flex items-stretch px-2">
-        <ScrollColumn
-          label="年"
-          items={years}
-          value={year}
-          onChange={(y) => emit(y, month, clampedDay)}
-          format={(v) => String(v)}
-        />
-        <ScrollColumn
-          label="月"
-          items={months}
-          value={month}
-          onChange={(m) => emit(year, m, clampedDay)}
-          format={(v) => String(v).padStart(2, '0')}
-        />
-        <ScrollColumn
-          label="日"
-          items={days}
-          value={clampedDay}
-          onChange={(d) => emit(year, month, d)}
-          format={(v) => String(v).padStart(2, '0')}
-        />
-      </div>
-      <div className="flex px-2 pb-2 text-center text-xs text-text-tertiary">
-        <span className="flex-1">年</span>
-        <span className="flex-1">月</span>
-        <span className="flex-1">日</span>
-      </div>
+    <div className="ymd-picker">
+      <Picker
+        className="ymd-picker-root w-full"
+        value={pickerValue}
+        onChange={handleChange}
+        height={PICKER_HEIGHT}
+        itemHeight={ITEM_HEIGHT}
+        wheelMode="natural"
+      >
+        <Picker.Column name="year">
+          {years.map((year) => (
+            <Picker.Item key={year} value={year}>
+              {({ selected }) => (
+                <PickerItemLabel selected={selected}>{year}</PickerItemLabel>
+              )}
+            </Picker.Item>
+          ))}
+        </Picker.Column>
+        <Picker.Column name="month">
+          {months.map((month) => (
+            <Picker.Item key={month} value={month}>
+              {({ selected }) => (
+                <PickerItemLabel selected={selected}>{month}</PickerItemLabel>
+              )}
+            </Picker.Item>
+          ))}
+        </Picker.Column>
+        <Picker.Column name="day">
+          {days.map((day) => (
+            <Picker.Item key={day} value={day}>
+              {({ selected }) => (
+                <PickerItemLabel selected={selected}>{day}</PickerItemLabel>
+              )}
+            </Picker.Item>
+          ))}
+        </Picker.Column>
+      </Picker>
     </div>
   )
 }

@@ -26,6 +26,12 @@ import {
   useItems,
 } from '../hooks/use-items'
 import {
+  useCreateUnit,
+  useDeleteUnit,
+  useUnits,
+  useUpdateUnit,
+} from '../hooks/use-units'
+import {
   exportBackup,
   importBackup,
   parseBackupJson,
@@ -35,17 +41,19 @@ import { SYSTEM_RESERVED_NAME } from '../lib/seed-defaults'
 import { supabase } from '../lib/supabase'
 import type { Item } from '../lib/types'
 
-type ManageMode = 'area' | 'category'
+type ManageMode = 'area' | 'category' | 'unit'
 
 function EmptyDeleteDialog({
   entityName,
   typeLabel,
+  message,
   onCancel,
   onConfirm,
   isPending,
 }: {
   entityName: string
   typeLabel: string
+  message?: string
   onCancel: () => void
   onConfirm: () => void
   isPending?: boolean
@@ -62,7 +70,8 @@ function EmptyDeleteDialog({
           删除{typeLabel}
         </h2>
         <p className="mt-2 text-sm text-text-secondary">
-          确定要删除「{entityName}」吗？此操作无法撤销。
+          {message ??
+            `确定要删除「${entityName}」吗？此操作无法撤销。`}
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <button
@@ -89,11 +98,12 @@ function EmptyDeleteDialog({
 
 function countItemsByField(
   items: Item[],
-  field: 'areaId' | 'categoryId',
+  field: 'areaId' | 'categoryId' | 'unitId',
 ): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const item of items) {
     const id = item[field]
+    if (!id) continue
     counts[id] = (counts[id] ?? 0) + 1
   }
   return counts
@@ -121,6 +131,7 @@ export default function ManagePage() {
   const { data: areas = [], isLoading: areasLoading } = useAreas()
   const { data: categories = [], isLoading: categoriesLoading } =
     useCategories()
+  const { data: units = [], isLoading: unitsLoading } = useUnits()
   const { data: items = [] } = useItems()
 
   const createArea = useCreateArea()
@@ -129,6 +140,9 @@ export default function ManagePage() {
   const createCategory = useCreateCategory()
   const updateCategory = useUpdateCategory()
   const deleteCategory = useDeleteCategory()
+  const createUnit = useCreateUnit()
+  const updateUnit = useUpdateUnit()
+  const deleteUnit = useDeleteUnit()
   const batchUpdateItemsArea = useBatchUpdateItemsArea()
   const batchUpdateItemsCategory = useBatchUpdateItemsCategory()
   const batchDeleteItems = useBatchDeleteItems()
@@ -141,15 +155,21 @@ export default function ManagePage() {
     () => countItemsByField(items, 'categoryId'),
     [items],
   )
+  const unitCounts = useMemo(
+    () => countItemsByField(items, 'unitId'),
+    [items],
+  )
 
   const deleteItemCount = entityToDelete
     ? mode === 'area'
       ? (areaCounts[entityToDelete.id] ?? 0)
-      : (categoryCounts[entityToDelete.id] ?? 0)
+      : mode === 'category'
+        ? (categoryCounts[entityToDelete.id] ?? 0)
+        : (unitCounts[entityToDelete.id] ?? 0)
     : 0
 
   const deleteTargets = useMemo(() => {
-    if (!entityToDelete) return []
+    if (!entityToDelete || mode === 'unit') return []
     const list = mode === 'area' ? areas : categories
     return list.filter(
       (e) => !e.isSystemReserved && e.id !== entityToDelete.id,
@@ -157,6 +177,7 @@ export default function ManagePage() {
   }, [entityToDelete, mode, areas, categories])
 
   const uncategorized = useMemo(() => {
+    if (mode === 'unit') return undefined
     const list = mode === 'area' ? areas : categories
     return findUncategorized(list)
   }, [mode, areas, categories])
@@ -178,8 +199,10 @@ export default function ManagePage() {
   async function deleteEntityOnly(id: string) {
     if (mode === 'area') {
       await deleteArea.mutateAsync(id)
-    } else {
+    } else if (mode === 'category') {
       await deleteCategory.mutateAsync(id)
+    } else {
+      await deleteUnit.mutateAsync(id)
     }
   }
 
@@ -296,6 +319,7 @@ export default function ManagePage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['areas'] }),
         queryClient.invalidateQueries({ queryKey: ['categories'] }),
+        queryClient.invalidateQueries({ queryKey: ['units'] }),
         queryClient.invalidateQueries({ queryKey: ['items'] }),
       ])
       setToast('导入成功')
@@ -306,7 +330,8 @@ export default function ManagePage() {
     }
   }
 
-  const typeLabel = mode === 'area' ? '区域' : '分类'
+  const typeLabel =
+    mode === 'area' ? '区域' : mode === 'category' ? '分类' : '计量单位'
 
   return (
     <>
@@ -333,7 +358,7 @@ export default function ManagePage() {
           aria-label="管理类型"
           className="flex rounded-button bg-bg-hover p-1"
         >
-          {(['area', 'category'] as const).map((tab) => (
+          {(['area', 'category', 'unit'] as const).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -347,7 +372,7 @@ export default function ManagePage() {
                   : 'text-text-secondary hover:text-text',
               ].join(' ')}
             >
-              {tab === 'area' ? '区域' : '分类'}
+              {tab === 'area' ? '区域' : tab === 'category' ? '分类' : '单位'}
             </button>
           ))}
         </div>
@@ -367,7 +392,7 @@ export default function ManagePage() {
               onDeleteRequest={handleDeleteRequest}
               isLoading={areasLoading}
             />
-          ) : (
+          ) : mode === 'category' ? (
             <ManageList
               type="category"
               entities={categories}
@@ -380,6 +405,20 @@ export default function ManagePage() {
               }}
               onDeleteRequest={handleDeleteRequest}
               isLoading={categoriesLoading}
+            />
+          ) : (
+            <ManageList
+              type="unit"
+              entities={units}
+              itemCounts={unitCounts}
+              onAdd={async (name) => {
+                await createUnit.mutateAsync({ name })
+              }}
+              onRename={async (id, name) => {
+                await updateUnit.mutateAsync({ id, name })
+              }}
+              onDeleteRequest={handleDeleteRequest}
+              isLoading={unitsLoading}
             />
           )}
         </div>
@@ -417,17 +456,23 @@ export default function ManagePage() {
         </section>
       </div>
 
-      {entityToDelete && deleteItemCount === 0 ? (
+      {entityToDelete &&
+      (deleteItemCount === 0 || mode === 'unit') ? (
         <EmptyDeleteDialog
           entityName={entityToDelete.name}
           typeLabel={typeLabel}
+          message={
+            mode === 'unit' && deleteItemCount > 0
+              ? `确定要删除「${entityToDelete.name}」吗？${deleteItemCount} 个物品的单位将被清空，数量保留。`
+              : undefined
+          }
           onCancel={() => setEntityToDelete(null)}
           onConfirm={handleEmptyDelete}
           isPending={isDeleting}
         />
       ) : null}
 
-      {entityToDelete && deleteItemCount > 0 ? (
+      {entityToDelete && deleteItemCount > 0 && mode !== 'unit' ? (
         <DeleteConfirmSheet
           open
           onClose={() => setEntityToDelete(null)}

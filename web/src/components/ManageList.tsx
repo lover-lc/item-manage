@@ -1,15 +1,16 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import SwipeRow from './ui/SwipeRow'
-import type { Area, Category } from '../lib/types'
+import type { Area, Category, Unit } from '../lib/types'
 import { SYSTEM_RESERVED_NAME } from '../lib/seed-defaults'
 
-export type ManageEntityType = 'area' | 'category'
-export type ManageEntity = Area | Category
+export type ManageEntityType = 'area' | 'category' | 'unit'
+export type ManageEntity = Area | Category | Unit
 
 const TYPE_LABELS: Record<ManageEntityType, string> = {
   area: '区域',
   category: '分类',
+  unit: '计量单位',
 }
 
 function NamePromptDialog({

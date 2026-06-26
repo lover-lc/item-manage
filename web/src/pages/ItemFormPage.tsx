@@ -1,28 +1,33 @@
 import { ChevronRight, Plus } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Sheet from '../components/ui/Sheet'
 import YMDPicker from '../components/YMDPicker'
 import { useAreas, useCreateArea } from '../hooks/use-areas'
 import { useCategories, useCreateCategory } from '../hooks/use-categories'
 import { useCreateItem, useItem, useUpdateItem } from '../hooks/use-items'
-import { parseISODate, toISODate } from '../lib/date-utils'
+import { useCreateUnit, useUnits } from '../hooks/use-units'
+import { formatDisplayDate, parseISODate, toISODate } from '../lib/date-utils'
 import {
   parsePrice,
+  parseQuantity,
   validateItemForm,
   validationErrorMessage,
 } from '../lib/validators'
+
+const fieldInputClass =
+  'w-full rounded-button border border-bg-hover bg-bg px-3 py-2 text-sm text-text outline-none focus:border-primary'
 
 function FormSection({
   title,
   children,
 }: {
   title: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <section className="overflow-hidden rounded-card bg-bg-card">
-      <h2 className="px-4 pt-4 pb-2 text-sm font-medium text-text-secondary">{title}</h2>
+      <h2 className="px-4 pt-3 pb-1.5 text-sm font-medium text-text-secondary">{title}</h2>
       <div className="divide-y divide-bg-hover">{children}</div>
     </section>
   )
@@ -33,12 +38,141 @@ function FormRow({
   children,
 }: {
   label: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
-    <div className="px-4 py-3">
-      <label className="mb-1.5 block text-sm text-text-secondary">{label}</label>
+    <div className="px-4 py-2.5">
+      <label className="mb-1 block text-xs text-text-secondary">{label}</label>
       {children}
+    </div>
+  )
+}
+
+function FormRowGrid({
+  columns = 2,
+  children,
+}: {
+  columns?: 2 | 3
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={[
+        'grid divide-x divide-bg-hover',
+        columns === 3 ? 'grid-cols-3' : 'grid-cols-2',
+      ].join(' ')}
+    >
+      {children}
+    </div>
+  )
+}
+
+function FormField({
+  label,
+  children,
+  compact = false,
+}: {
+  label: string
+  children: ReactNode
+  compact?: boolean
+}) {
+  return (
+    <div className={compact ? 'px-2 py-2.5' : 'px-4 py-2.5'}>
+      <label className="mb-1 block text-xs text-text-secondary">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function DateFieldRow({
+  label,
+  value,
+  onClick,
+}: {
+  label: string
+  value: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-bg-hover"
+    >
+      <span className="text-sm text-text-secondary">{label}</span>
+      <span className="flex items-center gap-1 text-sm text-text">
+        {formatDisplayDate(value)}
+        <ChevronRight className="size-4 text-text-tertiary" />
+      </span>
+    </button>
+  )
+}
+
+function DatePickerSheet({
+  open,
+  title,
+  value,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  title: string
+  value: string
+  onClose: () => void
+  onConfirm: (value: string) => void
+}) {
+  const [draft, setDraft] = useState(value)
+
+  useEffect(() => {
+    if (open) setDraft(value)
+  }, [open, value])
+
+  return (
+    <Sheet open={open} onClose={onClose} title={title}>
+      <div className="p-4">
+        <YMDPicker value={draft} onChange={setDraft} />
+        <button
+          type="button"
+          onClick={() => {
+            onConfirm(draft)
+            onClose()
+          }}
+          className="mt-4 w-full rounded-button bg-primary py-2.5 text-sm font-medium text-white hover:opacity-90"
+        >
+          完成
+        </button>
+      </div>
+    </Sheet>
+  )
+}
+
+function ToggleRow({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string
+  checked: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5">
+      <span className="text-sm text-text">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onToggle}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+          checked ? 'bg-primary' : 'bg-bg-hover'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform ${
+            checked ? 'left-[22px]' : 'left-0.5'
+          }`}
+        />
+      </button>
     </div>
   )
 }
@@ -47,21 +181,31 @@ function PickerButton({
   value,
   placeholder,
   onClick,
+  compact = false,
 }: {
   value: string | null
   placeholder: string
   onClick: () => void
+  compact?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between rounded-button border border-bg-hover bg-bg px-3 py-2.5 text-left text-sm"
+      className={[
+        'flex w-full min-w-0 items-center justify-between rounded-button border border-bg-hover bg-bg text-left text-sm',
+        compact ? 'gap-0.5 px-2 py-2' : 'px-3 py-2',
+      ].join(' ')}
     >
-      <span className={value ? 'text-text' : 'text-text-tertiary'}>
+      <span
+        className={[
+          'truncate',
+          value ? 'text-text' : 'text-text-tertiary',
+        ].join(' ')}
+      >
         {value ?? placeholder}
       </span>
-      <ChevronRight className="size-4 text-text-tertiary" />
+      <ChevronRight className="size-4 shrink-0 text-text-tertiary" />
     </button>
   )
 }
@@ -190,10 +334,12 @@ export default function ItemFormPage() {
   const { data: existingItem, isLoading: itemLoading } = useItem(id)
   const { data: areas = [] } = useAreas()
   const { data: categories = [] } = useCategories()
+  const { data: units = [] } = useUnits()
   const createItem = useCreateItem()
   const updateItem = useUpdateItem()
   const createArea = useCreateArea()
   const createCategory = useCreateCategory()
+  const createUnit = useCreateUnit()
 
   const selectableAreas = useMemo(
     () => areas.filter((a) => !a.isSystemReserved),
@@ -206,6 +352,8 @@ export default function ItemFormPage() {
 
   const [name, setName] = useState('')
   const [priceText, setPriceText] = useState('')
+  const [quantityText, setQuantityText] = useState('')
+  const [unitId, setUnitId] = useState<string | null>(null)
   const [areaId, setAreaId] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [specificLocation, setSpecificLocation] = useState('')
@@ -218,14 +366,23 @@ export default function ItemFormPage() {
 
   const [areaSheetOpen, setAreaSheetOpen] = useState(false)
   const [categorySheetOpen, setCategorySheetOpen] = useState(false)
+  const [unitSheetOpen, setUnitSheetOpen] = useState(false)
   const [newAreaSheetOpen, setNewAreaSheetOpen] = useState(false)
   const [newCategorySheetOpen, setNewCategorySheetOpen] = useState(false)
+  const [newUnitSheetOpen, setNewUnitSheetOpen] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [dateSheet, setDateSheet] = useState<'start' | 'end' | 'expiry' | null>(
+    null,
+  )
 
   useEffect(() => {
     if (!isEdit || !existingItem || initialized) return
     setName(existingItem.name)
     setPriceText(String(existingItem.purchasePrice))
+    setQuantityText(
+      existingItem.quantity != null ? String(existingItem.quantity) : '',
+    )
+    setUnitId(existingItem.unitId)
     setAreaId(existingItem.areaId)
     setCategoryId(existingItem.categoryId)
     setSpecificLocation(existingItem.specificLocation)
@@ -245,6 +402,8 @@ export default function ItemFormPage() {
     selectableCategories.find((c) => c.id === categoryId)?.name ??
     categories.find((c) => c.id === categoryId)?.name ??
     null
+  const selectedUnitName =
+    units.find((u) => u.id === unitId)?.name ?? null
 
   const isSaving = createItem.isPending || updateItem.isPending
 
@@ -252,6 +411,8 @@ export default function ItemFormPage() {
     const error = validateItemForm({
       name,
       priceText,
+      quantityText,
+      unitId,
       areaId,
       categoryId,
       startDate: parseISODate(startDate),
@@ -266,9 +427,13 @@ export default function ItemFormPage() {
     const price = parsePrice(priceText)
     if (price === null || !areaId || !categoryId) return
 
+    const quantity = parseQuantity(quantityText)
+
     const payload = {
       name: name.trim(),
       purchasePrice: price,
+      quantity,
+      unitId: quantity != null ? unitId : null,
       areaId,
       categoryId,
       specificLocation: specificLocation.trim(),
@@ -299,6 +464,12 @@ export default function ItemFormPage() {
     const category = await createCategory.mutateAsync({ name })
     setCategoryId(category.id)
     setNewCategorySheetOpen(false)
+  }
+
+  async function handleAddUnit(name: string) {
+    const unit = await createUnit.mutateAsync({ name })
+    setUnitId(unit.id)
+    setNewUnitSheetOpen(false)
   }
 
   if (isEdit && itemLoading) {
@@ -348,7 +519,7 @@ export default function ItemFormPage() {
         </div>
       </header>
 
-      <div className="space-y-4 px-4 py-4">
+      <div className="space-y-3 px-4 py-3">
         <FormSection title="基本信息">
           <FormRow label="物品名称">
             <input
@@ -356,96 +527,98 @@ export default function ItemFormPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="物品名称"
-              className="w-full rounded-button border border-bg-hover bg-bg px-3 py-2.5 text-sm text-text outline-none focus:border-primary"
+              className={fieldInputClass}
             />
           </FormRow>
-          <FormRow label="买入价格">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={priceText}
-              onChange={(e) => setPriceText(e.target.value)}
-              placeholder="0.00"
-              className="w-full rounded-button border border-bg-hover bg-bg px-3 py-2.5 text-sm text-text outline-none focus:border-primary"
-            />
-          </FormRow>
+          <FormRowGrid columns={3}>
+            <FormField label="价格" compact>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={priceText}
+                onChange={(e) => setPriceText(e.target.value)}
+                placeholder="0"
+                className={fieldInputClass}
+              />
+            </FormField>
+            <FormField label="数量" compact>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={quantityText}
+                onChange={(e) => setQuantityText(e.target.value)}
+                placeholder="选填"
+                className={fieldInputClass}
+              />
+            </FormField>
+            <FormField label="单位" compact>
+              <PickerButton
+                value={selectedUnitName}
+                placeholder="选填"
+                compact
+                onClick={() => setUnitSheetOpen(true)}
+              />
+            </FormField>
+          </FormRowGrid>
         </FormSection>
 
         <FormSection title="位置与分类">
-          <FormRow label="区域">
-            <PickerButton
-              value={selectedAreaName}
-              placeholder="请选择"
-              onClick={() => setAreaSheetOpen(true)}
-            />
-          </FormRow>
+          <FormRowGrid>
+            <FormField label="区域">
+              <PickerButton
+                value={selectedAreaName}
+                placeholder="请选择"
+                onClick={() => setAreaSheetOpen(true)}
+              />
+            </FormField>
+            <FormField label="分类">
+              <PickerButton
+                value={selectedCategoryName}
+                placeholder="请选择"
+                onClick={() => setCategorySheetOpen(true)}
+              />
+            </FormField>
+          </FormRowGrid>
           <FormRow label="具体位置">
             <input
               type="text"
               value={specificLocation}
               onChange={(e) => setSpecificLocation(e.target.value)}
               placeholder="具体位置"
-              className="w-full rounded-button border border-bg-hover bg-bg px-3 py-2.5 text-sm text-text outline-none focus:border-primary"
-            />
-          </FormRow>
-          <FormRow label="分类">
-            <PickerButton
-              value={selectedCategoryName}
-              placeholder="请选择"
-              onClick={() => setCategorySheetOpen(true)}
+              className={fieldInputClass}
             />
           </FormRow>
         </FormSection>
 
         <FormSection title="时间信息">
-          <FormRow label="开始使用时间">
-            <YMDPicker value={startDate} onChange={setStartDate} />
-          </FormRow>
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm text-text">设置用完时间</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={hasEndDate}
-              onClick={() => setHasEndDate((v) => !v)}
-              className={`relative h-7 w-12 rounded-full transition-colors ${
-                hasEndDate ? 'bg-primary' : 'bg-bg-hover'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform ${
-                  hasEndDate ? 'left-[22px]' : 'left-0.5'
-                }`}
-              />
-            </button>
-          </div>
+          <DateFieldRow
+            label="开始使用时间"
+            value={startDate}
+            onClick={() => setDateSheet('start')}
+          />
+          <ToggleRow
+            label="设置用完时间"
+            checked={hasEndDate}
+            onToggle={() => setHasEndDate((v) => !v)}
+          />
           {hasEndDate ? (
-            <FormRow label="用完时间">
-              <YMDPicker value={endDate} onChange={setEndDate} />
-            </FormRow>
+            <DateFieldRow
+              label="用完时间"
+              value={endDate}
+              onClick={() => setDateSheet('end')}
+            />
           ) : null}
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm text-text">设置过期时间</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={hasExpiryDate}
-              onClick={() => setHasExpiryDate((v) => !v)}
-              className={`relative h-7 w-12 rounded-full transition-colors ${
-                hasExpiryDate ? 'bg-primary' : 'bg-bg-hover'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform ${
-                  hasExpiryDate ? 'left-[22px]' : 'left-0.5'
-                }`}
-              />
-            </button>
-          </div>
+          <ToggleRow
+            label="设置过期时间"
+            checked={hasExpiryDate}
+            onToggle={() => setHasExpiryDate((v) => !v)}
+          />
           {hasExpiryDate ? (
-            <FormRow label="过期时间">
-              <YMDPicker value={expiryDate} onChange={setExpiryDate} />
-            </FormRow>
+            <DateFieldRow
+              label="过期时间"
+              value={expiryDate}
+              onClick={() => setDateSheet('expiry')}
+            />
           ) : null}
         </FormSection>
       </div>
@@ -512,6 +685,48 @@ export default function ItemFormPage() {
         onClose={() => setNewCategorySheetOpen(false)}
         onSubmit={handleAddCategory}
         isPending={createCategory.isPending}
+      />
+
+      <OptionSheet
+        open={unitSheetOpen}
+        title="选择计量单位"
+        options={units}
+        selectedId={unitId}
+        onSelect={setUnitId}
+        onClose={() => setUnitSheetOpen(false)}
+        onAddNew={() => setNewUnitSheetOpen(true)}
+        addLabel="新建计量单位"
+      />
+
+      <QuickAddSheet
+        open={newUnitSheetOpen}
+        title="新建计量单位"
+        placeholder="单位名称"
+        onClose={() => setNewUnitSheetOpen(false)}
+        onSubmit={handleAddUnit}
+        isPending={createUnit.isPending}
+      />
+
+      <DatePickerSheet
+        open={dateSheet === 'start'}
+        title="开始使用时间"
+        value={startDate}
+        onClose={() => setDateSheet(null)}
+        onConfirm={setStartDate}
+      />
+      <DatePickerSheet
+        open={dateSheet === 'end'}
+        title="用完时间"
+        value={endDate}
+        onClose={() => setDateSheet(null)}
+        onConfirm={setEndDate}
+      />
+      <DatePickerSheet
+        open={dateSheet === 'expiry'}
+        title="过期时间"
+        value={expiryDate}
+        onClose={() => setDateSheet(null)}
+        onConfirm={setExpiryDate}
       />
     </div>
   )

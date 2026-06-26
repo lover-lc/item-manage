@@ -4,23 +4,28 @@ import {
   toArea,
   toCategory,
   toItem,
+  toUnit,
   type Area,
   type Category,
   type DbArea,
   type DbCategory,
   type DbItemRow,
+  type DbUnit,
   type Item,
+  type Unit,
 } from './types'
 
-export const BACKUP_VERSION = 1 as const
+export const BACKUP_VERSION = 2 as const
+export const LEGACY_BACKUP_VERSION = 1 as const
 
-export type BackupItem = Omit<Item, 'area' | 'category'>
+export type BackupItem = Omit<Item, 'area' | 'category' | 'unit'>
 
 export type BackupData = {
   version: typeof BACKUP_VERSION
   exportedAt: string
   areas: Area[]
   categories: Category[]
+  units: Unit[]
   items: BackupItem[]
 }
 
@@ -29,6 +34,7 @@ export type BackupValidationError =
   | 'invalidVersion'
   | 'invalidAreas'
   | 'invalidCategories'
+  | 'invalidUnits'
   | 'invalidItems'
 
 export type BackupValidationResult =
@@ -55,7 +61,11 @@ function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-function validateEntity(value: unknown): value is Area | Category {
+function isNullableNumber(value: unknown): value is number | null {
+  return value === null || isNumber(value)
+}
+
+function validateEntity(value: unknown): value is Area | Category | Unit {
   if (!isRecord(value)) return false
   return (
     isNonEmptyString(value.id) &&
@@ -71,6 +81,8 @@ function validateBackupItem(value: unknown): value is BackupItem {
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.name) &&
     isNumber(value.purchasePrice) &&
+    (value.quantity === undefined || isNullableNumber(value.quantity)) &&
+    (value.unitId === undefined || isNullableString(value.unitId)) &&
     isNonEmptyString(value.startDate) &&
     isNullableString(value.endDate) &&
     isNullableString(value.expiryDate) &&
@@ -82,12 +94,21 @@ function validateBackupItem(value: unknown): value is BackupItem {
   )
 }
 
+function normalizeLegacyItem(item: BackupItem): BackupItem {
+  return {
+    ...item,
+    quantity: item.quantity ?? null,
+    unitId: item.unitId ?? null,
+  }
+}
+
 export function validateBackupData(data: unknown): BackupValidationResult {
   if (!isRecord(data)) {
     return { ok: false, error: 'invalidStructure' }
   }
 
-  if (data.version !== BACKUP_VERSION) {
+  const version = data.version
+  if (version !== BACKUP_VERSION && version !== LEGACY_BACKUP_VERSION) {
     return { ok: false, error: 'invalidVersion' }
   }
 
@@ -111,6 +132,16 @@ export function validateBackupData(data: unknown): BackupValidationResult {
     return { ok: false, error: 'invalidCategories' }
   }
 
+  const units = version === BACKUP_VERSION ? data.units : []
+  if (version === BACKUP_VERSION) {
+    if (!Array.isArray(data.units)) {
+      return { ok: false, error: 'invalidUnits' }
+    }
+    if (!data.units.every(validateEntity)) {
+      return { ok: false, error: 'invalidUnits' }
+    }
+  }
+
   if (!Array.isArray(data.items)) {
     return { ok: false, error: 'invalidItems' }
   }
@@ -126,7 +157,8 @@ export function validateBackupData(data: unknown): BackupValidationResult {
       exportedAt: data.exportedAt,
       areas: data.areas as Area[],
       categories: data.categories as Category[],
-      items: data.items as BackupItem[],
+      units: (units ?? []) as Unit[],
+      items: (data.items as BackupItem[]).map(normalizeLegacyItem),
     },
   }
 }
@@ -140,7 +172,7 @@ export function getBackupFilename(date = new Date()): string {
 }
 
 function stripItemRelations(item: Item): BackupItem {
-  const { area: _area, category: _category, ...rest } = item
+  const { area: _area, category: _category, unit: _unit, ...rest } = item
   return rest
 }
 
@@ -157,14 +189,17 @@ function triggerDownload(filename: string, data: BackupData): void {
 }
 
 export async function exportBackup(client: SupabaseClient): Promise<BackupData> {
-  const [areasResult, categoriesResult, itemsResult] = await Promise.all([
-    client.from('areas').select('*').order('name'),
-    client.from('categories').select('*').order('name'),
-    client.from('items').select('*').order('name'),
-  ])
+  const [areasResult, categoriesResult, unitsResult, itemsResult] =
+    await Promise.all([
+      client.from('areas').select('*').order('name'),
+      client.from('categories').select('*').order('name'),
+      client.from('units').select('*').order('name'),
+      client.from('items').select('*').order('name'),
+    ])
 
   if (areasResult.error) throw areasResult.error
   if (categoriesResult.error) throw categoriesResult.error
+  if (unitsResult.error) throw unitsResult.error
   if (itemsResult.error) throw itemsResult.error
 
   const backup: BackupData = {
@@ -172,6 +207,7 @@ export async function exportBackup(client: SupabaseClient): Promise<BackupData> 
     exportedAt: new Date().toISOString(),
     areas: (areasResult.data as DbArea[]).map(toArea),
     categories: (categoriesResult.data as DbCategory[]).map(toCategory),
+    units: (unitsResult.data as DbUnit[]).map(toUnit),
     items: (itemsResult.data as DbItemRow[]).map(toItem).map(stripItemRelations),
   }
 
@@ -197,16 +233,27 @@ function categoryToDbRow(category: Category): DbCategory {
   }
 }
 
+function unitToDbRow(unit: Unit): DbUnit {
+  return {
+    id: unit.id,
+    name: unit.name,
+    is_system_reserved: unit.isSystemReserved,
+    created_at: unit.createdAt,
+  }
+}
+
 function itemToDbRow(item: BackupItem) {
   return {
     id: item.id,
     name: item.name,
     purchase_price: item.purchasePrice,
+    quantity: item.quantity,
     start_date: item.startDate,
     end_date: item.endDate,
     expiry_date: item.expiryDate,
     area_id: item.areaId,
     category_id: item.categoryId,
+    unit_id: item.unitId,
     specific_location: item.specificLocation,
     created_at: item.createdAt,
     updated_at: item.updatedAt,
@@ -240,7 +287,13 @@ export async function importBackup(
     .neq('id', '00000000-0000-0000-0000-000000000000')
   if (deleteAreasError) throw deleteAreasError
 
-  const { areas, categories, items } = validation.data
+  const { error: deleteUnitsError } = await client
+    .from('units')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000')
+  if (deleteUnitsError) throw deleteUnitsError
+
+  const { areas, categories, units, items } = validation.data
 
   if (areas.length > 0) {
     const { error } = await client
@@ -253,6 +306,11 @@ export async function importBackup(
     const { error } = await client
       .from('categories')
       .insert(categories.map(categoryToDbRow))
+    if (error) throw error
+  }
+
+  if (units.length > 0) {
+    const { error } = await client.from('units').insert(units.map(unitToDbRow))
     if (error) throw error
   }
 

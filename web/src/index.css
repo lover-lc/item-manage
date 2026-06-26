@@ -52,3 +52,30 @@ textarea {
 @utility animate-sheet-up {
   animation: sheet-up 0.25s ease-out;
 }
+
+/* react-mobile-picker theme overrides */
+.ymd-picker {
+  position: relative;
+  width: 100%;
+}
+
+.ymd-picker::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: calc(50% - 20px);
+  z-index: 1;
+  height: 40px;
+  pointer-events: none;
+  border-block: 1px solid var(--color-bg-hover);
+  background: color-mix(in srgb, var(--color-bg-hover) 35%, transparent);
+}
+
+.ymd-picker-root {
+  position: relative;
+  z-index: 0;
+}
+
+.ymd-picker-root > div:last-child {
+  opacity: 0;
+}

@@ -12,6 +12,8 @@ function validInput(overrides: Partial<ItemFormInput> = {}): ItemFormInput {
   return {
     name: '毛巾',
     priceText: '29.9',
+    quantityText: '',
+    unitId: null,
     areaId,
     categoryId,
     startDate: new Date(),
@@ -61,6 +63,34 @@ describe('validateItemForm', () => {
           startDate,
           endDate: null,
         }),
+      ),
+    ).toBeNull()
+  })
+
+  it('rejects quantity without unit', () => {
+    expect(
+      validateItemForm(validInput({ quantityText: '2', unitId: null })),
+    ).toBe('incompleteQuantityUnit')
+  })
+
+  it('rejects unit without quantity', () => {
+    expect(
+      validateItemForm(validInput({ quantityText: '', unitId: 'unit-1' })),
+    ).toBe('incompleteQuantityUnit')
+  })
+
+  it('rejects invalid quantity', () => {
+    expect(
+      validateItemForm(
+        validInput({ quantityText: '0', unitId: 'unit-1' }),
+      ),
+    ).toBe('invalidQuantity')
+  })
+
+  it('accepts quantity and unit together', () => {
+    expect(
+      validateItemForm(
+        validInput({ quantityText: '2.5', unitId: 'unit-1' }),
       ),
     ).toBeNull()
   })

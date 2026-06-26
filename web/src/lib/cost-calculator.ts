@@ -23,3 +23,32 @@ export function formatDailyCost(cost: number): string {
   })
   return `${formatted.replace('CN¥', '¥')}/天`
 }
+
+export function unitPrice(price: number, quantity: number): number {
+  if (quantity <= 0) return 0
+  if (price === 0) return 0
+  const result = price / quantity
+  return Math.round(result * 100) / 100
+}
+
+export function formatUnitPrice(
+  price: number,
+  quantity: number,
+  unitName: string,
+): string {
+  const value = unitPrice(price, quantity)
+  const formatted = value.toLocaleString('zh-CN', {
+    style: 'currency',
+    currency: 'CNY',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  return `${formatted.replace('CN¥', '¥')}/${unitName}`
+}
+
+export function formatQuantity(quantity: number): string {
+  return quantity.toLocaleString('zh-CN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+}

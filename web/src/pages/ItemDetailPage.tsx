@@ -10,6 +10,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useDeleteItem, useItem, useUpdateItem } from '../hooks/use-items'
 import {
   formatDailyCost,
+  formatQuantity,
+  formatUnitPrice,
   usedDays as calcUsedDays,
 } from '../lib/cost-calculator'
 import { parseISODate, toISODate } from '../lib/date-utils'
@@ -171,6 +173,8 @@ export default function ItemDetailPage() {
   const days = calcUsedDays(startDate, endDate)
   const dailyCost = computeItemDailyCost(item)
   const isUsedUp = item.endDate != null
+  const hasUnitPrice =
+    item.quantity != null && item.quantity > 0 && item.unit != null
 
   async function handleMarkUsedUp() {
     await updateItem.mutateAsync({
@@ -225,6 +229,10 @@ export default function ItemDetailPage() {
           <div className="divide-y divide-bg-hover">
             <DetailRow label="物品名称">{item.name}</DetailRow>
             <DetailRow label="买入价格">{formatPrice(item.purchasePrice)}</DetailRow>
+            <DetailRow label="数量">
+              {item.quantity != null ? formatQuantity(item.quantity) : '—'}
+            </DetailRow>
+            <DetailRow label="计量单位">{item.unit?.name ?? '—'}</DetailRow>
           </div>
         </section>
 
@@ -265,6 +273,17 @@ export default function ItemDetailPage() {
             <DetailRow label="每日成本">
               <span className="font-medium text-cost">{formatDailyCost(dailyCost)}</span>
             </DetailRow>
+            {hasUnitPrice && item.unit ? (
+              <DetailRow label="单价">
+                <span className="font-medium text-cost">
+                  {formatUnitPrice(
+                    item.purchasePrice,
+                    item.quantity!,
+                    item.unit.name,
+                  )}
+                </span>
+              </DetailRow>
+            ) : null}
           </div>
         </section>
 

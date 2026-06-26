@@ -17,6 +17,18 @@ export function parseISODate(str: string): Date {
   return startOfDay(new Date(year, month - 1, day))
 }
 
+export function formatDisplayDate(iso: string): string {
+  const { year, month, day } = (() => {
+    const date = parseISODate(iso)
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+    }
+  })()
+  return `${year}年${month}月${day}日`
+}
+
 /** Calendar day difference from start to end (not inclusive). */
 export function daysBetween(start: Date, end: Date): number {
   const startDay = startOfDay(start)

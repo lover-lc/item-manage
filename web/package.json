@@ -19,6 +19,7 @@
     "pg": "^8.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-mobile-picker": "^1.2.0",
     "react-router-dom": "^7.18.0",
     "zustand": "^5.0.14"
   },

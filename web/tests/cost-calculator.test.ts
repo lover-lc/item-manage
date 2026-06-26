@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   dailyCost,
   formatDailyCost,
+  formatUnitPrice,
+  unitPrice,
   usedDays,
 } from '../src/lib/cost-calculator'
 import { parseISODate } from '../src/lib/date-utils'
@@ -36,5 +38,21 @@ describe('dailyCost', () => {
 describe('formatDailyCost', () => {
   it('formats cost as yen per day', () => {
     expect(formatDailyCost(12.5)).toBe('¥12.50/天')
+  })
+})
+
+describe('unitPrice', () => {
+  it('returns 0 when quantity is 0', () => {
+    expect(unitPrice(100, 0)).toBe(0)
+  })
+
+  it('divides price by quantity', () => {
+    expect(unitPrice(100, 4)).toBe(25)
+  })
+})
+
+describe('formatUnitPrice', () => {
+  it('formats unit price with unit name', () => {
+    expect(formatUnitPrice(40, 2, '千克')).toBe('¥20.00/千克')
   })
 })

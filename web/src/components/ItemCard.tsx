@@ -1,5 +1,5 @@
 import { AlertTriangle, MinusCircle, XCircle } from 'lucide-react'
-import { formatDailyCost } from '../lib/cost-calculator'
+import { formatDailyCost, formatUnitPrice } from '../lib/cost-calculator'
 import { getItemStatus, type ItemStatus } from '../lib/item-status'
 import { parseISODate } from '../lib/date-utils'
 import { highlightNameParts } from '../lib/search'
@@ -60,6 +60,11 @@ export default function ItemCard({ item, dailyCost, highlightQuery }: ItemCardPr
     today: new Date(),
   })
 
+  const unitPriceText =
+    item.quantity != null && item.quantity > 0 && item.unit
+      ? formatUnitPrice(item.purchasePrice, item.quantity, item.unit.name)
+      : null
+
   return (
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
@@ -70,9 +75,14 @@ export default function ItemCard({ item, dailyCost, highlightQuery }: ItemCardPr
         <p className="truncate text-sm text-text-tertiary">{location}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <span className="text-sm font-semibold text-cost">
-          {formatDailyCost(dailyCost)}
-        </span>
+        <div className="flex flex-col items-end">
+          <span className="text-sm font-semibold text-cost">
+            {formatDailyCost(dailyCost)}
+          </span>
+          {unitPriceText ? (
+            <span className="text-xs text-text-secondary">{unitPriceText}</span>
+          ) : null}
+        </div>
         <StatusIcon status={status} />
       </div>
     </div>
