@@ -1,18 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import TabLayout from './components/layout/TabLayout'
-import { AuthProvider, useAuth } from './hooks/use-auth'
 import { useSeedUserDefaults } from './hooks/use-seed'
 import ItemDetailPage from './pages/ItemDetailPage'
 import ItemFormPage from './pages/ItemFormPage'
 import ItemsPage from './pages/ItemsPage'
-import LoginPage from './pages/LoginPage'
 import ManagePage from './pages/ManagePage'
 import SearchPage from './pages/SearchPage'
 
 const queryClient = new QueryClient()
 
-function AuthenticatedApp() {
+function AppRoutes() {
   useSeedUserDefaults()
 
   return (
@@ -30,30 +28,10 @@ function AuthenticatedApp() {
   )
 }
 
-function AppContent() {
-  const { session, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="flex min-h-svh items-center justify-center bg-bg">
-        <p className="text-sm text-text-secondary">加载中…</p>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return <LoginPage />
-  }
-
-  return <AuthenticatedApp />
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <AppRoutes />
     </QueryClientProvider>
   )
 }

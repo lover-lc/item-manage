@@ -1,6 +1,5 @@
 export type DbArea = {
   id: string
-  user_id: string
   name: string
   is_system_reserved: boolean
   created_at: string
@@ -8,7 +7,6 @@ export type DbArea = {
 
 export type DbCategory = {
   id: string
-  user_id: string
   name: string
   is_system_reserved: boolean
   created_at: string
@@ -16,7 +14,6 @@ export type DbCategory = {
 
 export type DbItem = {
   id: string
-  user_id: string
   name: string
   purchase_price: number | string
   start_date: string
@@ -36,7 +33,6 @@ export type DbItemRow = DbItem & {
 
 export type Area = {
   id: string
-  userId: string
   name: string
   isSystemReserved: boolean
   createdAt: string
@@ -44,7 +40,6 @@ export type Area = {
 
 export type Category = {
   id: string
-  userId: string
   name: string
   isSystemReserved: boolean
   createdAt: string
@@ -52,7 +47,6 @@ export type Category = {
 
 export type Item = {
   id: string
-  userId: string
   name: string
   purchasePrice: number
   startDate: string
@@ -74,16 +68,12 @@ export type ItemInsert = Omit<
 
 export type ItemUpdateInput = Partial<ItemInsert>
 
-export type DbAreaInsert = Pick<DbArea, 'user_id' | 'name' | 'is_system_reserved'>
-export type DbCategoryInsert = Pick<
-  DbCategory,
-  'user_id' | 'name' | 'is_system_reserved'
->
+export type DbAreaInsert = Pick<DbArea, 'name' | 'is_system_reserved'>
+export type DbCategoryInsert = Pick<DbCategory, 'name' | 'is_system_reserved'>
 
 export function toArea(row: DbArea): Area {
   return {
     id: row.id,
-    userId: row.user_id,
     name: row.name,
     isSystemReserved: row.is_system_reserved,
     createdAt: row.created_at,
@@ -93,7 +83,6 @@ export function toArea(row: DbArea): Area {
 export function toCategory(row: DbCategory): Category {
   return {
     id: row.id,
-    userId: row.user_id,
     name: row.name,
     isSystemReserved: row.is_system_reserved,
     createdAt: row.created_at,
@@ -107,7 +96,6 @@ function parsePurchasePrice(value: number | string): number {
 export function toItem(row: DbItemRow): Item {
   const item: Item = {
     id: row.id,
-    userId: row.user_id,
     name: row.name,
     purchasePrice: parsePurchasePrice(row.purchase_price),
     startDate: row.start_date,
@@ -132,9 +120,8 @@ export function toItem(row: DbItemRow): Item {
 
 export function toDbItem(
   item: ItemInsert | ItemUpdateInput,
-  userId: string,
 ): Partial<DbItem> {
-  const row: Partial<DbItem> = { user_id: userId }
+  const row: Partial<DbItem> = {}
 
   if (item.name !== undefined) row.name = item.name
   if (item.purchasePrice !== undefined) {

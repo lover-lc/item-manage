@@ -8,7 +8,6 @@ import {
   type ItemUpdateInput,
 } from '../lib/types'
 import { supabase } from '../lib/supabase'
-import { useAuth } from './use-auth'
 
 export type ItemFilters = {
   areaId?: string
@@ -18,21 +17,15 @@ export type ItemFilters = {
 const ITEM_SELECT = '*, area:areas(*), category:categories(*)'
 
 export function useItems(filters: ItemFilters = {}) {
-  const { session } = useAuth()
-  const userId = session?.user?.id
   const { areaId, categoryId } = filters
 
   return useQuery({
-    queryKey: ['items', userId, areaId, categoryId],
-    enabled: Boolean(userId && supabase),
+    queryKey: ['items', areaId, categoryId],
+    enabled: Boolean(supabase),
     queryFn: async (): Promise<Item[]> => {
-      if (!supabase || !userId) return []
+      if (!supabase) return []
 
-      let query = supabase
-        .from('items')
-        .select(ITEM_SELECT)
-        .eq('user_id', userId)
-        .order('name')
+      let query = supabase.from('items').select(ITEM_SELECT).order('name')
 
       if (areaId) query = query.eq('area_id', areaId)
       if (categoryId) query = query.eq('category_id', categoryId)
@@ -46,20 +39,16 @@ export function useItems(filters: ItemFilters = {}) {
 }
 
 export function useItem(id: string | undefined) {
-  const { session } = useAuth()
-  const userId = session?.user?.id
-
   return useQuery({
-    queryKey: ['items', userId, id],
-    enabled: Boolean(userId && supabase && id),
+    queryKey: ['items', id],
+    enabled: Boolean(supabase && id),
     queryFn: async (): Promise<Item | null> => {
-      if (!supabase || !userId || !id) return null
+      if (!supabase || !id) return null
 
       const { data, error } = await supabase
         .from('items')
         .select(ITEM_SELECT)
         .eq('id', id)
-        .eq('user_id', userId)
         .maybeSingle()
 
       if (error) throw error
@@ -71,18 +60,16 @@ export function useItem(id: string | undefined) {
 
 export function useCreateItem() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
-    mutationFn: async (input: Omit<ItemInsert, 'userId'>) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+    mutationFn: async (input: ItemInsert) => {
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
 
       const { data, error } = await supabase
         .from('items')
-        .insert(toDbItem(input, userId))
+        .insert(toDbItem(input))
         .select(ITEM_SELECT)
         .single()
 
@@ -97,21 +84,18 @@ export function useCreateItem() {
 
 export function useUpdateItem() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (input: { id: string } & ItemUpdateInput) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
 
       const { id, ...updates } = input
       const { data, error } = await supabase
         .from('items')
-        .update(toDbItem(updates, userId))
+        .update(toDbItem(updates))
         .eq('id', id)
-        .eq('user_id', userId)
         .select(ITEM_SELECT)
         .single()
 
@@ -120,27 +104,21 @@ export function useUpdateItem() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['items'] })
-      queryClient.invalidateQueries({ queryKey: ['items', userId, variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['items', variables.id] })
     },
   })
 }
 
 export function useDeleteItem() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
 
-      const { error } = await supabase
-        .from('items')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId)
+      const { error } = await supabase.from('items').delete().eq('id', id)
 
       if (error) throw error
     },
@@ -152,13 +130,11 @@ export function useDeleteItem() {
 
 export function useBatchUpdateItemsArea() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (input: { itemIds: string[]; areaId: string }) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
       if (input.itemIds.length === 0) return
 
@@ -166,7 +142,6 @@ export function useBatchUpdateItemsArea() {
         .from('items')
         .update({ area_id: input.areaId })
         .in('id', input.itemIds)
-        .eq('user_id', userId)
 
       if (error) throw error
     },
@@ -178,13 +153,11 @@ export function useBatchUpdateItemsArea() {
 
 export function useBatchUpdateItemsCategory() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (input: { itemIds: string[]; categoryId: string }) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
       if (input.itemIds.length === 0) return
 
@@ -192,7 +165,6 @@ export function useBatchUpdateItemsCategory() {
         .from('items')
         .update({ category_id: input.categoryId })
         .in('id', input.itemIds)
-        .eq('user_id', userId)
 
       if (error) throw error
     },
@@ -204,21 +176,15 @@ export function useBatchUpdateItemsCategory() {
 
 export function useBatchDeleteItems() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (itemIds: string[]) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
       if (itemIds.length === 0) return
 
-      const { error } = await supabase
-        .from('items')
-        .delete()
-        .in('id', itemIds)
-        .eq('user_id', userId)
+      const { error } = await supabase.from('items').delete().in('id', itemIds)
 
       if (error) throw error
     },

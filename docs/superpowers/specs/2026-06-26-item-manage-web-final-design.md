@@ -19,15 +19,14 @@
 | 平台 | Web PWA，取代 iOS 为唯一维护目标 |
 | 技术栈 | React 19 + Vite 6 + TypeScript 5 + Tailwind CSS 4 + React Router 7 |
 | 数据层 | Supabase PostgreSQL + @supabase/supabase-js + TanStack Query + Zustand |
-| Supabase 项目 | **与 `desktop-pet-cc` 同一项目**（复用 URL + anon key） |
-| 数据库 | 新建 `areas` / `categories` / `items` 表，与桌宠表独立 |
-| 连接方式 | 对齐 `desktop-pet-cc/src/management/supabase.js` |
-| Auth | Supabase Auth；**1 个共享账号**（2 人、4～5 设备同邮箱密码） |
-| RLS | Phase 1 启用：`auth.uid() = user_id`，禁止未登录访问 |
+| Supabase 项目 | **独立项目** `liedowqqnzrklygdaqkw`（非 desktop-pet-cc） |
+| 连接方式 | `VITE_SUPABASE_URL` + publishable key（`sb_publishable_...`） |
+| Auth | **无登录**；家人打开即用，数据 household 共享 |
+| RLS | `anon` 可读写（URL 不公开；publishable key 在前端） |
 | 业务逻辑 | 与 06-25 Web spec 一致（分类、筛选、搜索、三选一删除、成本计算等） |
 | iOS 数据 | 不迁移 |
 | UI 风格 | 极简主义（Things 3 / Notion）；**每日成本保持橙色** |
-| 部署 | **Gitee Pages**，`base: '/item-manage/'` |
+| 部署 | **GitHub Pages**，`base: '/item-manage/'`，GitHub Actions 自动部署 |
 | 离线 | Phase 1：离线只读缓存，写操作需联网 |
 | Onboarding | 管理页「帮助」可打开；首次启动多页引导放 Phase 2 |
 | 备份 | JSON 导出/导入（全量覆盖，导入前二次确认） |
@@ -57,23 +56,17 @@ UI → React Query → Supabase Client → PostgreSQL（RLS）
     Zustand（筛选/排序 UI 状态）
 ```
 
-**Auth 流**：未登录 → LoginPage → `signInWithPassword` → session 持久化 → 检测 seed → 进入 Tab 导航。
+**Auth 流**：打开 App → 检测 seed → 直接进入 Tab 导航（无登录页）。
 
 ---
 
 ## Supabase 表结构（相对 06-26 的变更）
 
-所有表增加 `user_id uuid not null references auth.users(id) on delete cascade`。
+所有表**无 `user_id`**，全 household 共享一份数据。
 
 ### areas / categories / items
 
-字段与 `2026-06-26-item-manage-web-tech-stack-and-style.md` 一致，另加 `user_id`。
-
-### RLS 策略
-
-每张表启用 RLS，策略模式：
-
-- `SELECT` / `INSERT` / `UPDATE` / `DELETE`：`auth.uid() = user_id`
+字段见 migration 文件；RLS 对 `anon` / `authenticated` 开放读写。
 
 ### Seed 策略
 
@@ -84,14 +77,12 @@ UI → React Query → Supabase Client → PostgreSQL（RLS）
 
 ## 环境变量
 
-与 `desktop-pet-cc` 相同：
-
 ```
-VITE_SUPABASE_URL=https://xxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJxxx...
+VITE_SUPABASE_URL=https://liedowqqnzrklygdaqkw.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ```
 
-本地开发：复制 `desktop-pet-cc/.env.local` 到 `web/.env.local`（不进 git）。
+详见 [`docs/supabase-setup.md`](../../../supabase-setup.md)。
 
 ---
 
@@ -106,15 +97,15 @@ UI 风格定义见 `2026-06-26-item-manage-web-tech-stack-and-style.md`；成本
 ## Phase 1 交付清单
 
 1. `web/` 脚手架
-2. Supabase migration（user_id + RLS）
-3. 登录页 + Auth 守卫
+2. Supabase migration（已应用于新项目）
+3. ~~登录页~~ 无登录，打开即用
 4. 首次登录 seed
 5. 物品列表 / 详情 / 表单 / YMD 选择器
 6. 搜索页
 7. 管理 Tab（区域 + 分类 Segmented）
 8. 筛选 / 排序 / 三选一删除 Sheet
 9. JSON 导出 / 导入
-10. PWA + Gitee Pages 部署配置
+10. PWA + GitHub Pages 部署（GitHub Actions）
 
 ---
 

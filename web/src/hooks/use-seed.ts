@@ -5,26 +5,22 @@ import {
   buildDefaultCategoryRows,
 } from '../lib/seed-defaults'
 import { supabase } from '../lib/supabase'
-import { useAuth } from './use-auth'
 
 export function useSeedUserDefaults() {
-  const { session } = useAuth()
   const queryClient = useQueryClient()
   const seedingRef = useRef(false)
 
   useEffect(() => {
-    const userId = session?.user?.id
-    if (!userId || !supabase || seedingRef.current) return
+    if (!supabase || seedingRef.current) return
 
     let cancelled = false
 
     async function seedIfNeeded() {
-      if (!supabase || !userId) return
+      if (!supabase) return
 
       const { count, error: countError } = await supabase
         .from('areas')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
 
       if (cancelled) return
       if (countError) {
@@ -35,13 +31,10 @@ export function useSeedUserDefaults() {
 
       seedingRef.current = true
 
-      const areaRows = buildDefaultAreaRows(userId)
-      const categoryRows = buildDefaultCategoryRows(userId)
-
       const [{ error: areaError }, { error: categoryError }] =
         await Promise.all([
-          supabase.from('areas').insert(areaRows),
-          supabase.from('categories').insert(categoryRows),
+          supabase.from('areas').insert(buildDefaultAreaRows()),
+          supabase.from('categories').insert(buildDefaultCategoryRows()),
         ])
 
       if (cancelled) return
@@ -68,5 +61,5 @@ export function useSeedUserDefaults() {
     return () => {
       cancelled = true
     }
-  }, [session?.user?.id, queryClient])
+  }, [queryClient])
 }

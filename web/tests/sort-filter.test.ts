@@ -11,7 +11,6 @@ const today = new Date('2026-06-26')
 function makeItem(overrides: Partial<Item> = {}): Item {
   return {
     id: '1',
-    userId: 'u1',
     name: '物品A',
     purchasePrice: 100,
     startDate: '2026-06-01',

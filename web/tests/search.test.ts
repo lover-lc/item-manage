@@ -5,7 +5,6 @@ import type { Area, Category, Item } from '../src/lib/types'
 function makeItem(overrides: Partial<Item> = {}): Item {
   return {
     id: '1',
-    userId: 'u1',
     name: '物品A',
     purchasePrice: 100,
     startDate: '2026-06-01',
@@ -23,14 +22,12 @@ function makeItem(overrides: Partial<Item> = {}): Item {
 const areas: Area[] = [
   {
     id: 'area-1',
-    userId: 'u1',
     name: '厨房',
     isSystemReserved: false,
     createdAt: '2026-06-01T00:00:00Z',
   },
   {
     id: 'area-2',
-    userId: 'u1',
     name: '卧室',
     isSystemReserved: false,
     createdAt: '2026-06-01T00:00:00Z',
@@ -40,14 +37,12 @@ const areas: Area[] = [
 const categories: Category[] = [
   {
     id: 'cat-1',
-    userId: 'u1',
     name: '食品',
     isSystemReserved: false,
     createdAt: '2026-06-01T00:00:00Z',
   },
   {
     id: 'cat-2',
-    userId: 'u1',
     name: '电器',
     isSystemReserved: false,
     createdAt: '2026-06-01T00:00:00Z',

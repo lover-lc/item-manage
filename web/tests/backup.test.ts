@@ -13,7 +13,6 @@ const sampleBackup: BackupData = {
   areas: [
     {
       id: 'area-1',
-      userId: 'user-1',
       name: '客厅',
       isSystemReserved: false,
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -22,7 +21,6 @@ const sampleBackup: BackupData = {
   categories: [
     {
       id: 'category-1',
-      userId: 'user-1',
       name: '日用品',
       isSystemReserved: false,
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -31,7 +29,6 @@ const sampleBackup: BackupData = {
   items: [
     {
       id: 'item-1',
-      userId: 'user-1',
       name: '毛巾',
       purchasePrice: 29.9,
       startDate: '2026-01-01',

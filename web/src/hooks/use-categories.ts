@@ -1,22 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toCategory, type Category, type DbCategory } from '../lib/types'
 import { supabase } from '../lib/supabase'
-import { useAuth } from './use-auth'
 
 export function useCategories() {
-  const { session } = useAuth()
-  const userId = session?.user?.id
-
   return useQuery({
-    queryKey: ['categories', userId],
-    enabled: Boolean(userId && supabase),
+    queryKey: ['categories'],
+    enabled: Boolean(supabase),
     queryFn: async (): Promise<Category[]> => {
-      if (!supabase || !userId) return []
+      if (!supabase) return []
 
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('user_id', userId)
         .order('name')
 
       if (error) throw error
@@ -28,19 +23,16 @@ export function useCategories() {
 
 export function useCreateCategory() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (input: { name: string; isSystemReserved?: boolean }) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
 
       const { data, error } = await supabase
         .from('categories')
         .insert({
-          user_id: userId,
           name: input.name,
           is_system_reserved: input.isSystemReserved ?? false,
         })
@@ -58,20 +50,17 @@ export function useCreateCategory() {
 
 export function useUpdateCategory() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (input: { id: string; name: string }) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
 
       const { data, error } = await supabase
         .from('categories')
         .update({ name: input.name })
         .eq('id', input.id)
-        .eq('user_id', userId)
         .select()
         .single()
 
@@ -86,20 +75,14 @@ export function useUpdateCategory() {
 
 export function useDeleteCategory() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!supabase || !userId) {
-        throw new Error('未登录或未配置 Supabase')
+      if (!supabase) {
+        throw new Error('未配置 Supabase')
       }
 
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId)
+      const { error } = await supabase.from('categories').delete().eq('id', id)
 
       if (error) throw error
     },

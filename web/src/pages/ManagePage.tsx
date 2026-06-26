@@ -19,7 +19,6 @@ import {
   useDeleteCategory,
   useUpdateCategory,
 } from '../hooks/use-categories'
-import { useAuth } from '../hooks/use-auth'
 import {
   useBatchDeleteItems,
   useBatchUpdateItemsArea,
@@ -108,8 +107,6 @@ function findUncategorized(entities: ManageEntity[]): ManageEntity | undefined {
 
 export default function ManagePage() {
   const queryClient = useQueryClient()
-  const { session } = useAuth()
-  const userId = session?.user?.id
   const importInputRef = useRef<HTMLInputElement>(null)
 
   const [mode, setMode] = useState<ManageMode>('area')
@@ -258,14 +255,14 @@ export default function ManagePage() {
   }
 
   async function handleExport() {
-    if (!supabase || !userId) {
+    if (!supabase) {
       window.alert('未登录或未配置 Supabase')
       return
     }
 
     setIsExporting(true)
     try {
-      await exportBackup(supabase, userId)
+      await exportBackup(supabase)
       setToast('导出成功')
     } catch (err) {
       window.alert(String((err as Error)?.message || '导出失败'))
@@ -281,7 +278,7 @@ export default function ManagePage() {
   async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file || !supabase || !userId) return
+    if (!file || !supabase) return
 
     const confirmed = window.confirm('导入将覆盖云端所有数据，是否继续？')
     if (!confirmed) return
@@ -295,7 +292,7 @@ export default function ManagePage() {
         throw new Error('备份文件格式无效')
       }
 
-      await importBackup(supabase, userId, validation.data)
+      await importBackup(supabase, validation.data)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['areas'] }),
         queryClient.invalidateQueries({ queryKey: ['categories'] }),
@@ -403,7 +400,7 @@ export default function ManagePage() {
             <button
               type="button"
               onClick={handleExport}
-              disabled={isExporting || isImporting || !userId}
+              disabled={isExporting || isImporting}
               className="flex-1 rounded-button border border-bg-hover px-4 py-2.5 text-sm text-text hover:bg-bg-hover disabled:opacity-50"
             >
               {isExporting ? '导出中…' : '导出数据'}
@@ -411,7 +408,7 @@ export default function ManagePage() {
             <button
               type="button"
               onClick={handleImportClick}
-              disabled={isExporting || isImporting || !userId}
+              disabled={isExporting || isImporting}
               className="flex-1 rounded-button border border-bg-hover px-4 py-2.5 text-sm text-text hover:bg-bg-hover disabled:opacity-50"
             >
               {isImporting ? '导入中…' : '导入数据'}

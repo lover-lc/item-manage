@@ -3,30 +3,26 @@ export const DEFAULT_CATEGORIES = ['日用品', '食品', '宠物用品', '清�
 
 export const SYSTEM_RESERVED_NAME = '未分类'
 
-export function buildDefaultAreaRows(userId: string) {
+export function buildDefaultAreaRows() {
   return [
     ...DEFAULT_AREAS.map((name) => ({
-      user_id: userId,
       name,
       is_system_reserved: false,
     })),
     {
-      user_id: userId,
       name: SYSTEM_RESERVED_NAME,
       is_system_reserved: true,
     },
   ]
 }
 
-export function buildDefaultCategoryRows(userId: string) {
+export function buildDefaultCategoryRows() {
   return [
     ...DEFAULT_CATEGORIES.map((name) => ({
-      user_id: userId,
       name,
       is_system_reserved: false,
     })),
     {
-      user_id: userId,
       name: SYSTEM_RESERVED_NAME,
       is_system_reserved: true,
     },

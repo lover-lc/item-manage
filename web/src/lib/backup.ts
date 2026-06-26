@@ -59,7 +59,6 @@ function validateEntity(value: unknown): value is Area | Category {
   if (!isRecord(value)) return false
   return (
     isNonEmptyString(value.id) &&
-    isNonEmptyString(value.userId) &&
     isNonEmptyString(value.name) &&
     isBoolean(value.isSystemReserved) &&
     isNonEmptyString(value.createdAt)
@@ -70,7 +69,6 @@ function validateBackupItem(value: unknown): value is BackupItem {
   if (!isRecord(value)) return false
   return (
     isNonEmptyString(value.id) &&
-    isNonEmptyString(value.userId) &&
     isNonEmptyString(value.name) &&
     isNumber(value.purchasePrice) &&
     isNonEmptyString(value.startDate) &&
@@ -158,14 +156,11 @@ function triggerDownload(filename: string, data: BackupData): void {
   URL.revokeObjectURL(url)
 }
 
-export async function exportBackup(
-  client: SupabaseClient,
-  userId: string,
-): Promise<BackupData> {
+export async function exportBackup(client: SupabaseClient): Promise<BackupData> {
   const [areasResult, categoriesResult, itemsResult] = await Promise.all([
-    client.from('areas').select('*').eq('user_id', userId).order('name'),
-    client.from('categories').select('*').eq('user_id', userId).order('name'),
-    client.from('items').select('*').eq('user_id', userId).order('name'),
+    client.from('areas').select('*').order('name'),
+    client.from('categories').select('*').order('name'),
+    client.from('items').select('*').order('name'),
   ])
 
   if (areasResult.error) throw areasResult.error
@@ -184,30 +179,27 @@ export async function exportBackup(
   return backup
 }
 
-function areaToDbRow(area: Area, userId: string): DbArea {
+function areaToDbRow(area: Area): DbArea {
   return {
     id: area.id,
-    user_id: userId,
     name: area.name,
     is_system_reserved: area.isSystemReserved,
     created_at: area.createdAt,
   }
 }
 
-function categoryToDbRow(category: Category, userId: string): DbCategory {
+function categoryToDbRow(category: Category): DbCategory {
   return {
     id: category.id,
-    user_id: userId,
     name: category.name,
     is_system_reserved: category.isSystemReserved,
     created_at: category.createdAt,
   }
 }
 
-function itemToDbRow(item: BackupItem, userId: string) {
+function itemToDbRow(item: BackupItem) {
   return {
     id: item.id,
-    user_id: userId,
     name: item.name,
     purchase_price: item.purchasePrice,
     start_date: item.startDate,
@@ -223,7 +215,6 @@ function itemToDbRow(item: BackupItem, userId: string) {
 
 export async function importBackup(
   client: SupabaseClient,
-  userId: string,
   data: BackupData,
 ): Promise<void> {
   const validation = validateBackupData(data)
@@ -234,19 +225,19 @@ export async function importBackup(
   const { error: deleteItemsError } = await client
     .from('items')
     .delete()
-    .eq('user_id', userId)
+    .neq('id', '00000000-0000-0000-0000-000000000000')
   if (deleteItemsError) throw deleteItemsError
 
   const { error: deleteCategoriesError } = await client
     .from('categories')
     .delete()
-    .eq('user_id', userId)
+    .neq('id', '00000000-0000-0000-0000-000000000000')
   if (deleteCategoriesError) throw deleteCategoriesError
 
   const { error: deleteAreasError } = await client
     .from('areas')
     .delete()
-    .eq('user_id', userId)
+    .neq('id', '00000000-0000-0000-0000-000000000000')
   if (deleteAreasError) throw deleteAreasError
 
   const { areas, categories, items } = validation.data
@@ -254,21 +245,21 @@ export async function importBackup(
   if (areas.length > 0) {
     const { error } = await client
       .from('areas')
-      .insert(areas.map((area) => areaToDbRow(area, userId)))
+      .insert(areas.map(areaToDbRow))
     if (error) throw error
   }
 
   if (categories.length > 0) {
     const { error } = await client
       .from('categories')
-      .insert(categories.map((category) => categoryToDbRow(category, userId)))
+      .insert(categories.map(categoryToDbRow))
     if (error) throw error
   }
 
   if (items.length > 0) {
     const { error } = await client
       .from('items')
-      .insert(items.map((item) => itemToDbRow(item, userId)))
+      .insert(items.map(itemToDbRow))
     if (error) throw error
   }
 }

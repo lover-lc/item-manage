@@ -30,7 +30,7 @@
 | Auth | Supabase Auth | 1 个共享账号，RLS 按 user_id 隔离 |
 | PWA | vite-plugin-pwa | 离线缓存壳、可添加到主屏幕 |
 | 测试 | Vitest | 成本计算、校验逻辑单元测试 |
-| 部署 | Gitee Pages | 零成本静态托管，`base: '/item-manage/'` |
+| 部署 | GitHub Pages | 零成本静态托管，`base: '/item-manage/'`，GitHub Actions |
 
 ### 架构
 
