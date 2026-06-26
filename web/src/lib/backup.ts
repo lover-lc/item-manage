@@ -1,0 +1,274 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { toISODate } from './date-utils'
+import {
+  toArea,
+  toCategory,
+  toItem,
+  type Area,
+  type Category,
+  type DbArea,
+  type DbCategory,
+  type DbItemRow,
+  type Item,
+} from './types'
+
+export const BACKUP_VERSION = 1 as const
+
+export type BackupItem = Omit<Item, 'area' | 'category'>
+
+export type BackupData = {
+  version: typeof BACKUP_VERSION
+  exportedAt: string
+  areas: Area[]
+  categories: Category[]
+  items: BackupItem[]
+}
+
+export type BackupValidationError =
+  | 'invalidStructure'
+  | 'invalidVersion'
+  | 'invalidAreas'
+  | 'invalidCategories'
+  | 'invalidItems'
+
+export type BackupValidationResult =
+  | { ok: true; data: BackupData }
+  | { ok: false; error: BackupValidationError }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === 'boolean'
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string'
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function validateEntity(value: unknown): value is Area | Category {
+  if (!isRecord(value)) return false
+  return (
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.userId) &&
+    isNonEmptyString(value.name) &&
+    isBoolean(value.isSystemReserved) &&
+    isNonEmptyString(value.createdAt)
+  )
+}
+
+function validateBackupItem(value: unknown): value is BackupItem {
+  if (!isRecord(value)) return false
+  return (
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.userId) &&
+    isNonEmptyString(value.name) &&
+    isNumber(value.purchasePrice) &&
+    isNonEmptyString(value.startDate) &&
+    isNullableString(value.endDate) &&
+    isNullableString(value.expiryDate) &&
+    isNonEmptyString(value.areaId) &&
+    isNonEmptyString(value.categoryId) &&
+    typeof value.specificLocation === 'string' &&
+    isNonEmptyString(value.createdAt) &&
+    isNonEmptyString(value.updatedAt)
+  )
+}
+
+export function validateBackupData(data: unknown): BackupValidationResult {
+  if (!isRecord(data)) {
+    return { ok: false, error: 'invalidStructure' }
+  }
+
+  if (data.version !== BACKUP_VERSION) {
+    return { ok: false, error: 'invalidVersion' }
+  }
+
+  if (!isNonEmptyString(data.exportedAt)) {
+    return { ok: false, error: 'invalidStructure' }
+  }
+
+  if (!Array.isArray(data.areas)) {
+    return { ok: false, error: 'invalidAreas' }
+  }
+
+  if (!data.areas.every(validateEntity)) {
+    return { ok: false, error: 'invalidAreas' }
+  }
+
+  if (!Array.isArray(data.categories)) {
+    return { ok: false, error: 'invalidCategories' }
+  }
+
+  if (!data.categories.every(validateEntity)) {
+    return { ok: false, error: 'invalidCategories' }
+  }
+
+  if (!Array.isArray(data.items)) {
+    return { ok: false, error: 'invalidItems' }
+  }
+
+  if (!data.items.every(validateBackupItem)) {
+    return { ok: false, error: 'invalidItems' }
+  }
+
+  return {
+    ok: true,
+    data: {
+      version: BACKUP_VERSION,
+      exportedAt: data.exportedAt,
+      areas: data.areas as Area[],
+      categories: data.categories as Category[],
+      items: data.items as BackupItem[],
+    },
+  }
+}
+
+export function parseBackupJson(text: string): unknown {
+  return JSON.parse(text) as unknown
+}
+
+export function getBackupFilename(date = new Date()): string {
+  return `item-manage-backup-${toISODate(date).replace(/-/g, '')}.json`
+}
+
+function stripItemRelations(item: Item): BackupItem {
+  const { area: _area, category: _category, ...rest } = item
+  return rest
+}
+
+function triggerDownload(filename: string, data: BackupData): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: 'application/json',
+  })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function exportBackup(
+  client: SupabaseClient,
+  userId: string,
+): Promise<BackupData> {
+  const [areasResult, categoriesResult, itemsResult] = await Promise.all([
+    client.from('areas').select('*').eq('user_id', userId).order('name'),
+    client.from('categories').select('*').eq('user_id', userId).order('name'),
+    client.from('items').select('*').eq('user_id', userId).order('name'),
+  ])
+
+  if (areasResult.error) throw areasResult.error
+  if (categoriesResult.error) throw categoriesResult.error
+  if (itemsResult.error) throw itemsResult.error
+
+  const backup: BackupData = {
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    areas: (areasResult.data as DbArea[]).map(toArea),
+    categories: (categoriesResult.data as DbCategory[]).map(toCategory),
+    items: (itemsResult.data as DbItemRow[]).map(toItem).map(stripItemRelations),
+  }
+
+  triggerDownload(getBackupFilename(), backup)
+  return backup
+}
+
+function areaToDbRow(area: Area, userId: string): DbArea {
+  return {
+    id: area.id,
+    user_id: userId,
+    name: area.name,
+    is_system_reserved: area.isSystemReserved,
+    created_at: area.createdAt,
+  }
+}
+
+function categoryToDbRow(category: Category, userId: string): DbCategory {
+  return {
+    id: category.id,
+    user_id: userId,
+    name: category.name,
+    is_system_reserved: category.isSystemReserved,
+    created_at: category.createdAt,
+  }
+}
+
+function itemToDbRow(item: BackupItem, userId: string) {
+  return {
+    id: item.id,
+    user_id: userId,
+    name: item.name,
+    purchase_price: item.purchasePrice,
+    start_date: item.startDate,
+    end_date: item.endDate,
+    expiry_date: item.expiryDate,
+    area_id: item.areaId,
+    category_id: item.categoryId,
+    specific_location: item.specificLocation,
+    created_at: item.createdAt,
+    updated_at: item.updatedAt,
+  }
+}
+
+export async function importBackup(
+  client: SupabaseClient,
+  userId: string,
+  data: BackupData,
+): Promise<void> {
+  const validation = validateBackupData(data)
+  if (!validation.ok) {
+    throw new Error(`备份文件无效：${validation.error}`)
+  }
+
+  const { error: deleteItemsError } = await client
+    .from('items')
+    .delete()
+    .eq('user_id', userId)
+  if (deleteItemsError) throw deleteItemsError
+
+  const { error: deleteCategoriesError } = await client
+    .from('categories')
+    .delete()
+    .eq('user_id', userId)
+  if (deleteCategoriesError) throw deleteCategoriesError
+
+  const { error: deleteAreasError } = await client
+    .from('areas')
+    .delete()
+    .eq('user_id', userId)
+  if (deleteAreasError) throw deleteAreasError
+
+  const { areas, categories, items } = validation.data
+
+  if (areas.length > 0) {
+    const { error } = await client
+      .from('areas')
+      .insert(areas.map((area) => areaToDbRow(area, userId)))
+    if (error) throw error
+  }
+
+  if (categories.length > 0) {
+    const { error } = await client
+      .from('categories')
+      .insert(categories.map((category) => categoryToDbRow(category, userId)))
+    if (error) throw error
+  }
+
+  if (items.length > 0) {
+    const { error } = await client
+      .from('items')
+      .insert(items.map((item) => itemToDbRow(item, userId)))
+    if (error) throw error
+  }
+}

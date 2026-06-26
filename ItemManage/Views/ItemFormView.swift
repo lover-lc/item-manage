@@ -64,19 +64,16 @@ struct ItemFormView: View {
                 }
 
                 Section("时间信息") {
-                    DatePicker("开始使用时间", selection: $startDate, displayedComponents: .date)
-                        .datePickerStyle(.wheel)
+                    FormYMDDatePicker(title: "开始使用时间", date: $startDate)
 
                     Toggle("设置用完时间", isOn: $hasEndDate)
                     if hasEndDate {
-                        DatePicker("用完时间", selection: $endDate, displayedComponents: .date)
-                            .datePickerStyle(.wheel)
+                        FormYMDDatePicker(title: "用完时间", date: $endDate)
                     }
 
                     Toggle("设置过期时间", isOn: $hasExpiryDate)
                     if hasExpiryDate {
-                        DatePicker("过期时间", selection: $expiryDate, displayedComponents: .date)
-                            .datePickerStyle(.wheel)
+                        FormYMDDatePicker(title: "过期时间", date: $expiryDate)
                     }
                 }
             }

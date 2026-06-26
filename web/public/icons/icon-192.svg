@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="28" fill="#2c3e50"/>
+  <rect x="44" y="52" width="104" height="88" rx="10" fill="#fafafa"/>
+  <path d="M44 72h104" stroke="#2c3e50" stroke-width="6"/>
+  <text x="96" y="118" text-anchor="middle" font-size="44" fill="#2c3e50" font-family="system-ui, -apple-system, sans-serif" font-weight="600">i</text>
+</svg>
