@@ -39,6 +39,7 @@ const sampleBackup: BackupData = {
       id: 'item-1',
       name: '毛巾',
       purchasePrice: 29.9,
+      purchaseDate: '2026-01-01',
       quantity: 2,
       startDate: '2026-01-01',
       endDate: null,
@@ -79,6 +80,22 @@ describe('validateBackupData', () => {
     expect(
       validateBackupData({ ...sampleBackup, version: 99 }),
     ).toEqual({ ok: false, error: 'invalidVersion' })
+  })
+
+  it('accepts legacy v2 backup without purchaseDate', () => {
+    const legacy = {
+      version: 2,
+      exportedAt: sampleBackup.exportedAt,
+      areas: sampleBackup.areas,
+      categories: sampleBackup.categories,
+      units: sampleBackup.units,
+      items: sampleBackup.items.map(({ purchaseDate, ...item }) => item),
+    }
+    const result = validateBackupData(legacy)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.items[0]?.purchaseDate).toBe('2026-01-01')
+    }
   })
 
   it('accepts legacy v1 backup without units', () => {

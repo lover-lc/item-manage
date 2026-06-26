@@ -7,6 +7,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     id: '1',
     name: '物品A',
     purchasePrice: 100,
+    purchaseDate: '2026-06-01',
     quantity: null,
     startDate: '2026-06-01',
     endDate: null,

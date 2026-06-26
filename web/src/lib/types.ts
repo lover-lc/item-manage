@@ -23,6 +23,7 @@ export type DbItem = {
   id: string
   name: string
   purchase_price: number | string
+  purchase_date: string
   quantity: number | string | null
   start_date: string
   end_date: string | null
@@ -66,6 +67,7 @@ export type Item = {
   id: string
   name: string
   purchasePrice: number
+  purchaseDate: string
   quantity: number | null
   startDate: string
   endDate: string | null
@@ -134,6 +136,7 @@ export function toItem(row: DbItemRow): Item {
     id: row.id,
     name: row.name,
     purchasePrice: parsePurchasePrice(row.purchase_price),
+    purchaseDate: row.purchase_date,
     quantity: parseQuantity(row.quantity),
     startDate: row.start_date,
     endDate: row.end_date,
@@ -168,6 +171,7 @@ export function toDbItem(
   if (item.purchasePrice !== undefined) {
     row.purchase_price = item.purchasePrice
   }
+  if (item.purchaseDate !== undefined) row.purchase_date = item.purchaseDate
   if (item.startDate !== undefined) row.start_date = item.startDate
   if (item.endDate !== undefined) row.end_date = item.endDate
   if (item.expiryDate !== undefined) row.expiry_date = item.expiryDate

@@ -16,6 +16,7 @@ function validInput(overrides: Partial<ItemFormInput> = {}): ItemFormInput {
     unitId: null,
     areaId,
     categoryId,
+    purchaseDate: new Date(),
     startDate: new Date(),
     endDate: null,
     ...overrides,
@@ -42,11 +43,20 @@ describe('validateItemForm', () => {
   })
 
   it('rejects start date after end date', () => {
+    const purchaseDate = parseISODate('2026-06-01')
     const startDate = parseISODate('2026-06-10')
     const endDate = parseISODate('2026-06-05')
     expect(
-      validateItemForm(validInput({ startDate, endDate })),
+      validateItemForm(validInput({ purchaseDate, startDate, endDate })),
     ).toBe('startAfterEnd')
+  })
+
+  it('rejects start date before purchase date', () => {
+    const purchaseDate = parseISODate('2026-06-10')
+    const startDate = parseISODate('2026-06-05')
+    expect(
+      validateItemForm(validInput({ purchaseDate, startDate })),
+    ).toBe('startBeforePurchase')
   })
 
   it('accepts valid input', () => {
@@ -54,12 +64,14 @@ describe('validateItemForm', () => {
   })
 
   it('does not require end date', () => {
+    const purchaseDate = parseISODate('2026-01-01')
     const startDate = parseISODate('2026-01-01')
     expect(
       validateItemForm(
         validInput({
           name: '物品',
           priceText: '0',
+          purchaseDate,
           startDate,
           endDate: null,
         }),

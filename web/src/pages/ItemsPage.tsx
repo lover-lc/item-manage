@@ -14,6 +14,8 @@ import {
   itemsForArea,
   sortItems,
 } from '../lib/sort-filter'
+import { parseISODate } from '../lib/date-utils'
+import { getItemStatus } from '../lib/item-status'
 import type { Item } from '../lib/types'
 import { useUiStore } from '../store/ui-store'
 
@@ -74,9 +76,22 @@ function ItemRow({
   dailyCost: number
   onDelete: (item: Item) => void
 }) {
+  const isUsedUp =
+    getItemStatus({
+      endDate: item.endDate ? parseISODate(item.endDate) : null,
+      expiryDate: item.expiryDate ? parseISODate(item.expiryDate) : null,
+      today: new Date(),
+    }) === 'usedUp'
+
   return (
     <SwipeRow onDelete={() => onDelete(item)}>
-      <Link to={`/items/${item.id}`} className="block px-4 py-3 hover:bg-bg-hover">
+      <Link
+        to={`/items/${item.id}`}
+        className={[
+          'block px-4 py-3 hover:bg-bg-hover',
+          isUsedUp ? 'bg-bg-hover/80' : '',
+        ].join(' ')}
+      >
         <ItemCard item={item} dailyCost={dailyCost} />
       </Link>
     </SwipeRow>

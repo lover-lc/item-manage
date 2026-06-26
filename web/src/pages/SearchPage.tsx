@@ -6,8 +6,10 @@ import ItemCard from '../components/ItemCard'
 import { useAreas } from '../hooks/use-areas'
 import { useCategories } from '../hooks/use-categories'
 import { useItems } from '../hooks/use-items'
-import { searchItems } from '../lib/search'
 import { computeItemDailyCost, sortItems } from '../lib/sort-filter'
+import { parseISODate } from '../lib/date-utils'
+import { getItemStatus } from '../lib/item-status'
+import { searchItems } from '../lib/search'
 import { useUiStore } from '../store/ui-store'
 
 export default function SearchPage() {
@@ -66,11 +68,22 @@ export default function SearchPage() {
           </div>
         ) : (
           <div className="mt-4 space-y-2">
-            {results.map((item) => (
+            {results.map((item) => {
+              const isUsedUp =
+                getItemStatus({
+                  endDate: item.endDate ? parseISODate(item.endDate) : null,
+                  expiryDate: item.expiryDate ? parseISODate(item.expiryDate) : null,
+                  today: new Date(),
+                }) === 'usedUp'
+
+              return (
               <Link
                 key={item.id}
                 to={`/items/${item.id}`}
-                className="block rounded-card bg-bg-card px-4 py-3 hover:bg-bg-hover"
+                className={[
+                  'block rounded-card px-4 py-3 hover:bg-bg-hover',
+                  isUsedUp ? 'bg-bg-hover/80' : 'bg-bg-card',
+                ].join(' ')}
               >
                 <ItemCard
                   item={item}
@@ -78,7 +91,8 @@ export default function SearchPage() {
                   highlightQuery={trimmedQuery}
                 />
               </Link>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ export type ItemFormInput = {
   unitId: string | null | undefined
   areaId: string | null | undefined
   categoryId: string | null | undefined
+  purchaseDate: Date
   startDate: Date
   endDate?: Date | null
 }
@@ -18,6 +19,7 @@ export type ValidationError =
   | 'incompleteQuantityUnit'
   | 'missingArea'
   | 'missingCategory'
+  | 'startBeforePurchase'
   | 'startAfterEnd'
 
 export function parsePrice(text: string): number | null {
@@ -72,8 +74,13 @@ export function validateItemForm(input: ItemFormInput): ValidationError | null {
     return 'missingCategory'
   }
 
+  const purchaseDay = startOfDay(input.purchaseDate)
+  const startDay = startOfDay(input.startDate)
+  if (startDay < purchaseDay) {
+    return 'startBeforePurchase'
+  }
+
   if (input.endDate) {
-    const startDay = startOfDay(input.startDate)
     const endDay = startOfDay(input.endDate)
     if (startDay > endDay) {
       return 'startAfterEnd'
@@ -97,6 +104,8 @@ export function validationErrorMessage(error: ValidationError): string {
       return '请选择区域'
     case 'missingCategory':
       return '请选择分类'
+    case 'startBeforePurchase':
+      return '开始使用时间不能早于购入时间'
     case 'startAfterEnd':
       return '开始时间不能晚于用完时间'
   }

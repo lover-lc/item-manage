@@ -3,10 +3,14 @@ import { dailyCost as calcDailyCost, usedDays } from './cost-calculator'
 import { parseISODate } from './date-utils'
 import type { Area, Category, Item } from './types'
 
-export function computeItemDailyCost(item: Item, today: Date = new Date()): number {
+export function computeItemUsedDays(item: Item, today: Date = new Date()): number {
   const startDate = parseISODate(item.startDate)
   const endDate = item.endDate ? parseISODate(item.endDate) : today
-  const days = usedDays(startDate, endDate)
+  return usedDays(startDate, endDate)
+}
+
+export function computeItemDailyCost(item: Item, today: Date = new Date()): number {
+  const days = computeItemUsedDays(item, today)
   return calcDailyCost(item.purchasePrice, days)
 }
 

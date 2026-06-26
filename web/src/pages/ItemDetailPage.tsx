@@ -10,24 +10,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useDeleteItem, useItem, useUpdateItem } from '../hooks/use-items'
 import {
   formatDailyCost,
+  formatPrice,
   formatQuantity,
   formatUnitPrice,
-  usedDays as calcUsedDays,
 } from '../lib/cost-calculator'
 import { parseISODate, toISODate } from '../lib/date-utils'
 import { getItemStatus, type ItemStatus } from '../lib/item-status'
-import { computeItemDailyCost } from '../lib/sort-filter'
-
-function formatPrice(price: number): string {
-  return price
-    .toLocaleString('zh-CN', {
-      style: 'currency',
-      currency: 'CNY',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-    .replace('CN¥', '¥')
-}
+import { computeItemDailyCost, computeItemUsedDays } from '../lib/sort-filter'
 
 function formatDate(iso: string): string {
   return parseISODate(iso).toLocaleDateString('zh-CN', {
@@ -168,9 +157,7 @@ export default function ItemDetailPage() {
   const statusInfo = STATUS_CONFIG[status]
   const StatusIcon = statusInfo.Icon
 
-  const startDate = parseISODate(item.startDate)
-  const endDate = item.endDate ? parseISODate(item.endDate) : new Date()
-  const days = calcUsedDays(startDate, endDate)
+  const days = computeItemUsedDays(item)
   const dailyCost = computeItemDailyCost(item)
   const isUsedUp = item.endDate != null
   const hasUnitPrice =
@@ -254,6 +241,7 @@ export default function ItemDetailPage() {
             时间信息
           </h2>
           <div className="divide-y divide-bg-hover">
+            <DetailRow label="购入时间">{formatDate(item.purchaseDate)}</DetailRow>
             <DetailRow label="开始使用时间">{formatDate(item.startDate)}</DetailRow>
             {item.endDate ? (
               <DetailRow label="用完时间">{formatDate(item.endDate)}</DetailRow>

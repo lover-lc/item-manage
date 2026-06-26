@@ -14,6 +14,17 @@ export function dailyCost(price: number, usedDaysCount: number): number {
   return Math.round(result * 100) / 100
 }
 
+export function formatPrice(price: number): string {
+  return price
+    .toLocaleString('zh-CN', {
+      style: 'currency',
+      currency: 'CNY',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+    .replace('CN¥', '¥')
+}
+
 export function formatDailyCost(cost: number): string {
   const formatted = cost.toLocaleString('zh-CN', {
     style: 'currency',

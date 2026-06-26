@@ -15,8 +15,8 @@ import {
   type Unit,
 } from './types'
 
-export const BACKUP_VERSION = 2 as const
-export const LEGACY_BACKUP_VERSION = 1 as const
+export const BACKUP_VERSION = 3 as const
+export const LEGACY_BACKUP_VERSION = 2 as const
 
 export type BackupItem = Omit<Item, 'area' | 'category' | 'unit'>
 
@@ -81,6 +81,7 @@ function validateBackupItem(value: unknown): value is BackupItem {
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.name) &&
     isNumber(value.purchasePrice) &&
+    (value.purchaseDate === undefined || isNonEmptyString(value.purchaseDate)) &&
     (value.quantity === undefined || isNullableNumber(value.quantity)) &&
     (value.unitId === undefined || isNullableString(value.unitId)) &&
     isNonEmptyString(value.startDate) &&
@@ -94,9 +95,10 @@ function validateBackupItem(value: unknown): value is BackupItem {
   )
 }
 
-function normalizeLegacyItem(item: BackupItem): BackupItem {
+function normalizeLegacyItem(item: BackupItem & { purchaseDate?: string }): BackupItem {
   return {
     ...item,
+    purchaseDate: item.purchaseDate ?? item.startDate,
     quantity: item.quantity ?? null,
     unitId: item.unitId ?? null,
   }
@@ -108,7 +110,11 @@ export function validateBackupData(data: unknown): BackupValidationResult {
   }
 
   const version = data.version
-  if (version !== BACKUP_VERSION && version !== LEGACY_BACKUP_VERSION) {
+  if (
+    version !== BACKUP_VERSION &&
+    version !== LEGACY_BACKUP_VERSION &&
+    version !== 1
+  ) {
     return { ok: false, error: 'invalidVersion' }
   }
 
@@ -247,6 +253,7 @@ function itemToDbRow(item: BackupItem) {
     id: item.id,
     name: item.name,
     purchase_price: item.purchasePrice,
+    purchase_date: item.purchaseDate,
     quantity: item.quantity,
     start_date: item.startDate,
     end_date: item.endDate,

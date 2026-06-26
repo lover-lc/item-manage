@@ -2,12 +2,11 @@ import { ChevronRight, Plus } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Sheet from '../components/ui/Sheet'
-import YMDPicker from '../components/YMDPicker'
 import { useAreas, useCreateArea } from '../hooks/use-areas'
 import { useCategories, useCreateCategory } from '../hooks/use-categories'
 import { useCreateItem, useItem, useUpdateItem } from '../hooks/use-items'
 import { useCreateUnit, useUnits } from '../hooks/use-units'
-import { formatDisplayDate, parseISODate, toISODate } from '../lib/date-utils'
+import { parseISODate, toISODate } from '../lib/date-utils'
 import {
   parsePrice,
   parseQuantity,
@@ -17,6 +16,9 @@ import {
 
 const fieldInputClass =
   'w-full rounded-button border border-bg-hover bg-bg px-3 py-2 text-sm text-text outline-none focus:border-primary'
+
+const dateInputClass =
+  'rounded-button border border-bg-hover bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-primary'
 
 function FormSection({
   title,
@@ -84,65 +86,25 @@ function FormField({
   )
 }
 
-function DateFieldRow({
+function DateInputRow({
   label,
   value,
-  onClick,
+  onChange,
 }: {
   label: string
   value: string
-  onClick: () => void
+  onChange: (value: string) => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-bg-hover"
-    >
-      <span className="text-sm text-text-secondary">{label}</span>
-      <span className="flex items-center gap-1 text-sm text-text">
-        {formatDisplayDate(value)}
-        <ChevronRight className="size-4 text-text-tertiary" />
-      </span>
-    </button>
-  )
-}
-
-function DatePickerSheet({
-  open,
-  title,
-  value,
-  onClose,
-  onConfirm,
-}: {
-  open: boolean
-  title: string
-  value: string
-  onClose: () => void
-  onConfirm: (value: string) => void
-}) {
-  const [draft, setDraft] = useState(value)
-
-  useEffect(() => {
-    if (open) setDraft(value)
-  }, [open, value])
-
-  return (
-    <Sheet open={open} onClose={onClose} title={title}>
-      <div className="p-4">
-        <YMDPicker value={draft} onChange={setDraft} />
-        <button
-          type="button"
-          onClick={() => {
-            onConfirm(draft)
-            onClose()
-          }}
-          className="mt-4 w-full rounded-button bg-primary py-2.5 text-sm font-medium text-white hover:opacity-90"
-        >
-          完成
-        </button>
-      </div>
-    </Sheet>
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+      <label className="shrink-0 text-sm text-text-secondary">{label}</label>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={dateInputClass}
+      />
+    </div>
   )
 }
 
@@ -350,6 +312,8 @@ export default function ItemFormPage() {
     [categories],
   )
 
+  const todayIso = toISODate(new Date())
+
   const [name, setName] = useState('')
   const [priceText, setPriceText] = useState('')
   const [quantityText, setQuantityText] = useState('')
@@ -357,11 +321,12 @@ export default function ItemFormPage() {
   const [areaId, setAreaId] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [specificLocation, setSpecificLocation] = useState('')
-  const [startDate, setStartDate] = useState(() => toISODate(new Date()))
+  const [purchaseDate, setPurchaseDate] = useState(todayIso)
+  const [startDate, setStartDate] = useState(todayIso)
   const [hasEndDate, setHasEndDate] = useState(false)
-  const [endDate, setEndDate] = useState(() => toISODate(new Date()))
+  const [endDate, setEndDate] = useState(todayIso)
   const [hasExpiryDate, setHasExpiryDate] = useState(false)
-  const [expiryDate, setExpiryDate] = useState(() => toISODate(new Date()))
+  const [expiryDate, setExpiryDate] = useState(todayIso)
   const [initialized, setInitialized] = useState(false)
 
   const [areaSheetOpen, setAreaSheetOpen] = useState(false)
@@ -371,9 +336,6 @@ export default function ItemFormPage() {
   const [newCategorySheetOpen, setNewCategorySheetOpen] = useState(false)
   const [newUnitSheetOpen, setNewUnitSheetOpen] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
-  const [dateSheet, setDateSheet] = useState<'start' | 'end' | 'expiry' | null>(
-    null,
-  )
 
   useEffect(() => {
     if (!isEdit || !existingItem || initialized) return
@@ -386,13 +348,14 @@ export default function ItemFormPage() {
     setAreaId(existingItem.areaId)
     setCategoryId(existingItem.categoryId)
     setSpecificLocation(existingItem.specificLocation)
+    setPurchaseDate(existingItem.purchaseDate)
     setStartDate(existingItem.startDate)
     setHasEndDate(existingItem.endDate != null)
-    setEndDate(existingItem.endDate ?? toISODate(new Date()))
+    setEndDate(existingItem.endDate ?? todayIso)
     setHasExpiryDate(existingItem.expiryDate != null)
-    setExpiryDate(existingItem.expiryDate ?? toISODate(new Date()))
+    setExpiryDate(existingItem.expiryDate ?? todayIso)
     setInitialized(true)
-  }, [isEdit, existingItem, initialized])
+  }, [isEdit, existingItem, initialized, todayIso])
 
   const selectedAreaName =
     selectableAreas.find((a) => a.id === areaId)?.name ??
@@ -415,6 +378,7 @@ export default function ItemFormPage() {
       unitId,
       areaId,
       categoryId,
+      purchaseDate: parseISODate(purchaseDate),
       startDate: parseISODate(startDate),
       endDate: hasEndDate ? parseISODate(endDate) : null,
     })
@@ -432,6 +396,7 @@ export default function ItemFormPage() {
     const payload = {
       name: name.trim(),
       purchasePrice: price,
+      purchaseDate,
       quantity,
       unitId: quantity != null ? unitId : null,
       areaId,
@@ -591,10 +556,15 @@ export default function ItemFormPage() {
         </FormSection>
 
         <FormSection title="时间信息">
-          <DateFieldRow
+          <DateInputRow
+            label="购入时间"
+            value={purchaseDate}
+            onChange={setPurchaseDate}
+          />
+          <DateInputRow
             label="开始使用时间"
             value={startDate}
-            onClick={() => setDateSheet('start')}
+            onChange={setStartDate}
           />
           <ToggleRow
             label="设置用完时间"
@@ -602,10 +572,10 @@ export default function ItemFormPage() {
             onToggle={() => setHasEndDate((v) => !v)}
           />
           {hasEndDate ? (
-            <DateFieldRow
+            <DateInputRow
               label="用完时间"
               value={endDate}
-              onClick={() => setDateSheet('end')}
+              onChange={setEndDate}
             />
           ) : null}
           <ToggleRow
@@ -614,10 +584,10 @@ export default function ItemFormPage() {
             onToggle={() => setHasExpiryDate((v) => !v)}
           />
           {hasExpiryDate ? (
-            <DateFieldRow
+            <DateInputRow
               label="过期时间"
               value={expiryDate}
-              onClick={() => setDateSheet('expiry')}
+              onChange={setExpiryDate}
             />
           ) : null}
         </FormSection>
@@ -705,28 +675,6 @@ export default function ItemFormPage() {
         onClose={() => setNewUnitSheetOpen(false)}
         onSubmit={handleAddUnit}
         isPending={createUnit.isPending}
-      />
-
-      <DatePickerSheet
-        open={dateSheet === 'start'}
-        title="开始使用时间"
-        value={startDate}
-        onClose={() => setDateSheet(null)}
-        onConfirm={setStartDate}
-      />
-      <DatePickerSheet
-        open={dateSheet === 'end'}
-        title="用完时间"
-        value={endDate}
-        onClose={() => setDateSheet(null)}
-        onConfirm={setEndDate}
-      />
-      <DatePickerSheet
-        open={dateSheet === 'expiry'}
-        title="过期时间"
-        value={expiryDate}
-        onClose={() => setDateSheet(null)}
-        onConfirm={setExpiryDate}
       />
     </div>
   )
