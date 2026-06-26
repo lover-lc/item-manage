@@ -1,8 +1,9 @@
-import { Package, Plus, SlidersHorizontal, Trash2 } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { Package, Plus, SlidersHorizontal } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import FilterSortMenu from '../components/FilterSortMenu'
 import ItemCard from '../components/ItemCard'
+import SwipeRow from '../components/ui/SwipeRow'
 import { useAreas } from '../hooks/use-areas'
 import { useCategories } from '../hooks/use-categories'
 import { useDeleteItem, useItems } from '../hooks/use-items'
@@ -73,66 +74,12 @@ function ItemRow({
   dailyCost: number
   onDelete: (item: Item) => void
 }) {
-  const rowRef = useRef<HTMLDivElement>(null)
-  const [offsetX, setOffsetX] = useState(0)
-  const touchStartX = useRef(0)
-  const swiped = useRef(false)
-
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX
-    swiped.current = false
-  }
-
-  function handleTouchMove(e: React.TouchEvent) {
-    const delta = e.touches[0].clientX - touchStartX.current
-    if (delta < -10) swiped.current = true
-    setOffsetX(Math.max(Math.min(delta, 0), -72))
-  }
-
-  function handleTouchEnd() {
-    setOffsetX(offsetX < -36 ? -72 : 0)
-  }
-
   return (
-    <div ref={rowRef} className="relative overflow-hidden rounded-card">
-      <div className="absolute inset-y-0 right-0 flex w-[72px] items-center justify-center bg-status-expired">
-        <button
-          type="button"
-          aria-label="删除"
-          onClick={() => onDelete(item)}
-          className="p-3 text-white"
-        >
-          <Trash2 className="size-5" />
-        </button>
-      </div>
-      <div
-        className="relative bg-bg-card transition-transform duration-150"
-        style={{ transform: `translateX(${offsetX}px)` }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="flex items-center hover:bg-bg-hover">
-          <Link
-            to={`/items/${item.id}`}
-            className="min-w-0 flex-1 px-4 py-3"
-            onClick={(e) => {
-              if (swiped.current) e.preventDefault()
-            }}
-          >
-            <ItemCard item={item} dailyCost={dailyCost} />
-          </Link>
-          <button
-            type="button"
-            aria-label="删除"
-            onClick={() => onDelete(item)}
-            className="shrink-0 px-3 py-3 text-text-tertiary hover:text-status-expired"
-          >
-            <Trash2 className="size-4" />
-          </button>
-        </div>
-      </div>
-    </div>
+    <SwipeRow onDelete={() => onDelete(item)}>
+      <Link to={`/items/${item.id}`} className="block px-4 py-3 hover:bg-bg-hover">
+        <ItemCard item={item} dailyCost={dailyCost} />
+      </Link>
+    </SwipeRow>
   )
 }
 
@@ -142,26 +89,27 @@ export default function ItemsPage() {
   const { data: allItems = [], isLoading: itemsLoading } = useItems()
   const deleteItem = useDeleteItem()
 
-  const areaFilterId = useUiStore((s) => s.areaFilterId)
-  const categoryFilterId = useUiStore((s) => s.categoryFilterId)
+  const areaFilterIds = useUiStore((s) => s.areaFilterIds)
+  const categoryFilterIds = useUiStore((s) => s.categoryFilterIds)
   const sortField = useUiStore((s) => s.sortField)
   const sortOrder = useUiStore((s) => s.sortOrder)
 
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
 
-  const hasActiveFilter = areaFilterId !== null || categoryFilterId !== null
+  const hasActiveFilter =
+    areaFilterIds.length > 0 || categoryFilterIds.length > 0
 
   const filteredItems = useMemo(
-    () => filterItems(allItems, areaFilterId, categoryFilterId),
-    [allItems, areaFilterId, categoryFilterId],
+    () => filterItems(allItems, areaFilterIds, categoryFilterIds),
+    [allItems, areaFilterIds, categoryFilterIds],
   )
 
   const sections = useMemo(() => {
-    return displayedAreas(areas, areaFilterId).map((area) => ({
+    return displayedAreas(areas, areaFilterIds, filteredItems).map((area) => ({
       area,
       items: sortItems(itemsForArea(filteredItems, area.id), sortField, sortOrder),
     }))
-  }, [areas, areaFilterId, filteredItems, sortField, sortOrder])
+  }, [areas, areaFilterIds, filteredItems, sortField, sortOrder])
 
   const hasMatchingItems = filteredItems.length > 0
   const isLoading = areasLoading || itemsLoading
@@ -176,7 +124,11 @@ export default function ItemsPage() {
     <>
       <header className="border-b border-bg-hover bg-bg-card px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <FilterSortMenu areas={areas} categories={categories} />
+          <FilterSortMenu
+            areas={areas}
+            categories={categories}
+            items={allItems}
+          />
           <h1 className="flex-1 text-center text-lg font-medium text-text">物品</h1>
           <Link
             to="/items/new"
@@ -203,6 +155,11 @@ export default function ItemsPage() {
             <p className="mt-4 font-medium text-text">暂无物品</p>
             <p className="mt-1 text-sm text-text-secondary">当前筛选条件下没有物品</p>
           </div>
+        ) : sections.length === 0 ? (
+          <div className="flex flex-col items-center py-16 text-center">
+            <Package className="size-12 text-text-tertiary" strokeWidth={1.25} />
+            <p className="mt-4 font-medium text-text">暂无物品</p>
+          </div>
         ) : (
           <div className="space-y-6">
             {sections.map(({ area, items }) => (
@@ -210,23 +167,16 @@ export default function ItemsPage() {
                 <h2 className="mb-2 px-1 text-sm font-medium text-text-secondary">
                   {area.name} ({items.length})
                 </h2>
-                {items.length === 0 ? (
-                  <p className="rounded-card bg-bg-card px-4 py-6 text-center text-sm text-text-tertiary">
-                    暂无物品
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {items.map((item) => (
-                      <div key={item.id} className="group">
-                        <ItemRow
-                          item={item}
-                          dailyCost={computeItemDailyCost(item)}
-                          onDelete={setDeleteTarget}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      dailyCost={computeItemDailyCost(item)}
+                      onDelete={setDeleteTarget}
+                    />
+                  ))}
+                </div>
               </section>
             ))}
           </div>

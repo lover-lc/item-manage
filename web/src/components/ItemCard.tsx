@@ -51,10 +51,8 @@ function ItemName({
 }
 
 export default function ItemCard({ item, dailyCost, highlightQuery }: ItemCardProps) {
-  const areaName = item.area?.name ?? '—'
   const categoryName = item.category?.name ?? '—'
   const location = item.specificLocation.trim() || '—'
-  const subtitle = `${areaName} > ${location} · ${categoryName}`
 
   const status = getItemStatus({
     endDate: item.endDate ? parseISODate(item.endDate) : null,
@@ -68,7 +66,8 @@ export default function ItemCard({ item, dailyCost, highlightQuery }: ItemCardPr
         <p className="truncate font-medium text-text">
           <ItemName name={item.name} highlightQuery={highlightQuery} />
         </p>
-        <p className="truncate text-sm text-text-secondary">{subtitle}</p>
+        <p className="truncate text-sm text-text-secondary">{categoryName}</p>
+        <p className="truncate text-sm text-text-tertiary">{location}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <span className="text-sm font-semibold text-cost">

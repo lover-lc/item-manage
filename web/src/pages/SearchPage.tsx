@@ -31,7 +31,7 @@ export default function SearchPage() {
     <>
       <header className="border-b border-bg-hover bg-bg-card px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <FilterSortMenu areas={areas} categories={categories} sortOnly />
+          <FilterSortMenu areas={areas} categories={categories} items={items} sortOnly />
           <h1 className="flex-1 text-center text-lg font-medium text-text">搜索</h1>
           <div className="size-9 shrink-0" aria-hidden="true" />
         </div>

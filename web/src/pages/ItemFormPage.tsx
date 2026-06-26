@@ -379,13 +379,6 @@ export default function ItemFormPage() {
               onClick={() => setAreaSheetOpen(true)}
             />
           </FormRow>
-          <FormRow label="分类">
-            <PickerButton
-              value={selectedCategoryName}
-              placeholder="请选择"
-              onClick={() => setCategorySheetOpen(true)}
-            />
-          </FormRow>
           <FormRow label="具体位置">
             <input
               type="text"
@@ -393,6 +386,13 @@ export default function ItemFormPage() {
               onChange={(e) => setSpecificLocation(e.target.value)}
               placeholder="具体位置"
               className="w-full rounded-button border border-bg-hover bg-bg px-3 py-2.5 text-sm text-text outline-none focus:border-primary"
+            />
+          </FormRow>
+          <FormRow label="分类">
+            <PickerButton
+              value={selectedCategoryName}
+              placeholder="请选择"
+              onClick={() => setCategorySheetOpen(true)}
             />
           </FormRow>
         </FormSection>

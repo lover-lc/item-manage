@@ -10,23 +10,39 @@ export type SortField =
 export type SortOrder = 'asc' | 'desc'
 
 interface UiState {
-  areaFilterId: string | null
-  categoryFilterId: string | null
+  areaFilterIds: string[]
+  categoryFilterIds: string[]
   sortField: SortField
   sortOrder: SortOrder
-  setAreaFilterId: (id: string | null) => void
-  setCategoryFilterId: (id: string | null) => void
+  toggleAreaFilter: (id: string) => void
+  toggleCategoryFilter: (id: string) => void
+  clearFilters: () => void
   setSortField: (field: SortField) => void
   setSortOrder: (order: SortOrder) => void
 }
 
-export const useUiStore = create<UiState>((set) => ({
-  areaFilterId: null,
-  categoryFilterId: null,
+export const useUiStore = create<UiState>((set, get) => ({
+  areaFilterIds: [],
+  categoryFilterIds: [],
   sortField: 'name',
   sortOrder: 'asc',
-  setAreaFilterId: (id) => set({ areaFilterId: id }),
-  setCategoryFilterId: (id) => set({ categoryFilterId: id }),
+  toggleAreaFilter: (id) => {
+    const current = get().areaFilterIds
+    set({
+      areaFilterIds: current.includes(id)
+        ? current.filter((x) => x !== id)
+        : [...current, id],
+    })
+  },
+  toggleCategoryFilter: (id) => {
+    const current = get().categoryFilterIds
+    set({
+      categoryFilterIds: current.includes(id)
+        ? current.filter((x) => x !== id)
+        : [...current, id],
+    })
+  },
+  clearFilters: () => set({ areaFilterIds: [], categoryFilterIds: [] }),
   setSortField: (field) => set({ sortField: field }),
   setSortOrder: (order) => set({ sortOrder: order }),
 }))

@@ -1,5 +1,6 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useState } from 'react'
+import SwipeRow from './ui/SwipeRow'
 import type { Area, Category } from '../lib/types'
 import { SYSTEM_RESERVED_NAME } from '../lib/seed-defaults'
 
@@ -157,47 +158,31 @@ export default function ManageList({
           暂无{typeLabel}
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-bg-hover rounded-card bg-bg-card">
+        <ul className="mt-3 space-y-2">
           {entities.map((entity) => {
             const count = itemCounts[entity.id] ?? 0
             const isSystem = entity.isSystemReserved
 
             return (
-              <li
-                key={entity.id}
-                className="flex items-center gap-2 px-4 py-3"
-              >
-                <button
-                  type="button"
-                  disabled={isSystem}
-                  onClick={() => !isSystem && setEntityToRename(entity)}
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
+              <li key={entity.id}>
+                <SwipeRow
+                  deleteDisabled={isSystem}
+                  onDelete={
+                    isSystem ? undefined : () => attemptDelete(entity)
+                  }
+                  onContentClick={
+                    isSystem ? undefined : () => setEntityToRename(entity)
+                  }
                 >
-                  <span className="truncate text-sm text-text">
-                    {entity.name}
-                  </span>
-                  {!isSystem ? (
-                    <Pencil
-                      className="size-3.5 shrink-0 text-text-tertiary"
-                      strokeWidth={1.75}
-                    />
-                  ) : null}
-                </button>
-                <span className="shrink-0 text-sm text-text-secondary">
-                  {count} 件
-                </span>
-                {!isSystem ? (
-                  <button
-                    type="button"
-                    aria-label={`删除${entity.name}`}
-                    onClick={() => attemptDelete(entity)}
-                    className="shrink-0 rounded-button p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-status-expired"
-                  >
-                    <Trash2 className="size-4" strokeWidth={1.75} />
-                  </button>
-                ) : (
-                  <div className="size-7 shrink-0" aria-hidden="true" />
-                )}
+                  <div className="flex items-center gap-2 px-4 py-3">
+                    <span className="min-w-0 flex-1 truncate text-sm text-text">
+                      {entity.name}
+                    </span>
+                    <span className="shrink-0 text-sm text-text-secondary">
+                      {count} 件
+                    </span>
+                  </div>
+                </SwipeRow>
               </li>
             )
           })}

@@ -234,10 +234,10 @@ export default function ItemDetailPage() {
           </h2>
           <div className="divide-y divide-bg-hover">
             <DetailRow label="区域">{item.area?.name ?? '—'}</DetailRow>
-            <DetailRow label="分类">{item.category?.name ?? '—'}</DetailRow>
             <DetailRow label="具体位置">
               {item.specificLocation.trim() || '—'}
             </DetailRow>
+            <DetailRow label="分类">{item.category?.name ?? '—'}</DetailRow>
           </div>
         </section>
 

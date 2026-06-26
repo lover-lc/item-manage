@@ -74,12 +74,13 @@ function ScrollColumn({ items, value, onChange, format, label }: ScrollColumnPro
         ref={ref}
         onScroll={handleScroll}
         className="h-[200px] overflow-y-auto scroll-smooth snap-y snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ scrollPaddingBlock: `${ITEM_HEIGHT * PADDING_ITEMS}px` }}
       >
-        <div style={{ height: ITEM_HEIGHT * PADDING_ITEMS }} />
+        <div style={{ height: ITEM_HEIGHT * PADDING_ITEMS }} aria-hidden="true" />
         {items.map((item) => (
           <div
             key={item}
-            className="flex h-10 snap-center items-center justify-center text-base text-text"
+            className="flex h-10 snap-center items-center justify-center text-base leading-10 text-text"
           >
             {format(item)}
           </div>

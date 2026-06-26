@@ -1,10 +1,13 @@
 import { ArrowUpDown, Check, SlidersHorizontal } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Area, Category } from '../lib/types'
 import {
+  areasWithItems,
+  categoriesWithItems,
   SORT_FIELD_LABELS,
   SORT_ORDER_LABELS,
 } from '../lib/sort-filter'
+import type { Item } from '../lib/types'
 import {
   useUiStore,
   type SortField,
@@ -14,6 +17,7 @@ import {
 interface FilterSortMenuProps {
   areas: Area[]
   categories: Category[]
+  items: Item[]
   sortOnly?: boolean
 }
 
@@ -49,7 +53,7 @@ function MenuPanel({
     <div
       ref={ref}
       className={[
-        'absolute top-full z-20 mt-1 min-w-44 rounded-card bg-bg-card py-1 shadow-lg ring-1 ring-black/5',
+        'absolute top-full z-20 mt-1 max-h-[70vh] min-w-44 overflow-y-auto rounded-card bg-bg-card py-1 shadow-lg ring-1 ring-black/5',
         align === 'left' ? 'left-0' : 'right-0',
       ].join(' ')}
     >
@@ -58,7 +62,30 @@ function MenuPanel({
   )
 }
 
-function MenuItem({
+function FilterMenuItem({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text hover:bg-bg-hover"
+    >
+      <span className="flex size-4 shrink-0 items-center justify-center rounded border border-bg-hover">
+        {selected ? <Check className="size-3 text-primary" /> : null}
+      </span>
+      <span>{label}</span>
+    </button>
+  )
+}
+
+function SortMenuItem({
   label,
   selected,
   onClick,
@@ -94,19 +121,30 @@ function MenuSectionTitle({ children }: { children: ReactNode }) {
 export default function FilterSortMenu({
   areas,
   categories,
+  items,
   sortOnly = false,
 }: FilterSortMenuProps) {
   const [filterOpen, setFilterOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
 
-  const areaFilterId = useUiStore((s) => s.areaFilterId)
-  const categoryFilterId = useUiStore((s) => s.categoryFilterId)
+  const areaFilterIds = useUiStore((s) => s.areaFilterIds)
+  const categoryFilterIds = useUiStore((s) => s.categoryFilterIds)
   const sortField = useUiStore((s) => s.sortField)
   const sortOrder = useUiStore((s) => s.sortOrder)
-  const setAreaFilterId = useUiStore((s) => s.setAreaFilterId)
-  const setCategoryFilterId = useUiStore((s) => s.setCategoryFilterId)
+  const toggleAreaFilter = useUiStore((s) => s.toggleAreaFilter)
+  const toggleCategoryFilter = useUiStore((s) => s.toggleCategoryFilter)
+  const clearFilters = useUiStore((s) => s.clearFilters)
   const setSortField = useUiStore((s) => s.setSortField)
   const setSortOrder = useUiStore((s) => s.setSortOrder)
+
+  const filterableAreas = useMemo(() => areasWithItems(areas, items), [areas, items])
+  const filterableCategories = useMemo(
+    () => categoriesWithItems(categories, items),
+    [categories, items],
+  )
+
+  const hasActiveFilter =
+    areaFilterIds.length > 0 || categoryFilterIds.length > 0
 
   const sortFields = Object.keys(SORT_FIELD_LABELS) as SortField[]
   const sortOrders: SortOrder[] = ['asc', 'desc']
@@ -122,40 +160,53 @@ export default function FilterSortMenu({
               setSortOpen(false)
               setFilterOpen((v) => !v)
             }}
-            className="rounded-button p-2 text-text-secondary hover:bg-bg-hover hover:text-text"
+            className={[
+              'rounded-button p-2 hover:bg-bg-hover hover:text-text',
+              hasActiveFilter ? 'text-primary' : 'text-text-secondary',
+            ].join(' ')}
           >
             <SlidersHorizontal className="size-5" strokeWidth={1.75} />
           </button>
           <MenuPanel open={filterOpen} onClose={() => setFilterOpen(false)}>
             <MenuSectionTitle>区域</MenuSectionTitle>
-            <MenuItem
-              label="全部"
-              selected={areaFilterId === null}
-              onClick={() => setAreaFilterId(null)}
-            />
-            {areas.map((area) => (
-              <MenuItem
-                key={area.id}
-                label={area.name}
-                selected={areaFilterId === area.id}
-                onClick={() => setAreaFilterId(area.id)}
-              />
-            ))}
+            {filterableAreas.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-text-tertiary">暂无区域</p>
+            ) : (
+              filterableAreas.map((area) => (
+                <FilterMenuItem
+                  key={area.id}
+                  label={area.name}
+                  selected={areaFilterIds.includes(area.id)}
+                  onClick={() => toggleAreaFilter(area.id)}
+                />
+              ))
+            )}
             <MenuDivider />
             <MenuSectionTitle>分类</MenuSectionTitle>
-            <MenuItem
-              label="全部"
-              selected={categoryFilterId === null}
-              onClick={() => setCategoryFilterId(null)}
-            />
-            {categories.map((category) => (
-              <MenuItem
-                key={category.id}
-                label={category.name}
-                selected={categoryFilterId === category.id}
-                onClick={() => setCategoryFilterId(category.id)}
-              />
-            ))}
+            {filterableCategories.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-text-tertiary">暂无分类</p>
+            ) : (
+              filterableCategories.map((category) => (
+                <FilterMenuItem
+                  key={category.id}
+                  label={category.name}
+                  selected={categoryFilterIds.includes(category.id)}
+                  onClick={() => toggleCategoryFilter(category.id)}
+                />
+              ))
+            )}
+            {hasActiveFilter ? (
+              <>
+                <MenuDivider />
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="w-full px-3 py-2 text-left text-sm text-primary hover:bg-bg-hover"
+                >
+                  清除筛选
+                </button>
+              </>
+            ) : null}
           </MenuPanel>
         </div>
       ) : null}
@@ -174,7 +225,7 @@ export default function FilterSortMenu({
         </button>
         <MenuPanel open={sortOpen} onClose={() => setSortOpen(false)}>
           {sortFields.map((field) => (
-            <MenuItem
+            <SortMenuItem
               key={field}
               label={SORT_FIELD_LABELS[field]}
               selected={sortField === field}
@@ -183,7 +234,7 @@ export default function FilterSortMenu({
           ))}
           <MenuDivider />
           {sortOrders.map((order) => (
-            <MenuItem
+            <SortMenuItem
               key={order}
               label={SORT_ORDER_LABELS[order]}
               selected={sortOrder === order}

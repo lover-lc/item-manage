@@ -1,7 +1,7 @@
 import type { SortField, SortOrder } from '../store/ui-store'
 import { dailyCost as calcDailyCost, usedDays } from './cost-calculator'
 import { parseISODate } from './date-utils'
-import type { Area, Item } from './types'
+import type { Area, Category, Item } from './types'
 
 export function computeItemDailyCost(item: Item, today: Date = new Date()): number {
   const startDate = parseISODate(item.startDate)
@@ -10,14 +10,33 @@ export function computeItemDailyCost(item: Item, today: Date = new Date()): numb
   return calcDailyCost(item.purchasePrice, days)
 }
 
+export function countItemsByField(
+  items: Item[],
+  field: 'areaId' | 'categoryId',
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const item of items) {
+    const id = item[field]
+    counts[id] = (counts[id] ?? 0) + 1
+  }
+  return counts
+}
+
 export function filterItems(
   items: Item[],
-  areaFilterId: string | null,
-  categoryFilterId: string | null,
+  areaFilterIds: string[],
+  categoryFilterIds: string[],
 ): Item[] {
   return items.filter((item) => {
-    if (areaFilterId && item.areaId !== areaFilterId) return false
-    if (categoryFilterId && item.categoryId !== categoryFilterId) return false
+    if (areaFilterIds.length > 0 && !areaFilterIds.includes(item.areaId)) {
+      return false
+    }
+    if (
+      categoryFilterIds.length > 0 &&
+      !categoryFilterIds.includes(item.categoryId)
+    ) {
+      return false
+    }
     return true
   })
 }
@@ -58,12 +77,30 @@ export function itemsForArea(items: Item[], areaId: string): Item[] {
 
 export function displayedAreas(
   areas: Area[],
-  areaFilterId: string | null,
+  areaFilterIds: string[],
+  items: Item[],
 ): Area[] {
-  if (areaFilterId) {
-    return areas.filter((area) => area.id === areaFilterId)
-  }
-  return areas
+  const counts = countItemsByField(items, 'areaId')
+  return areas.filter((area) => {
+    if ((counts[area.id] ?? 0) === 0) return false
+    if (areaFilterIds.length > 0 && !areaFilterIds.includes(area.id)) {
+      return false
+    }
+    return true
+  })
+}
+
+export function areasWithItems(areas: Area[], items: Item[]): Area[] {
+  const counts = countItemsByField(items, 'areaId')
+  return areas.filter((area) => (counts[area.id] ?? 0) > 0)
+}
+
+export function categoriesWithItems(
+  categories: Category[],
+  items: Item[],
+): Category[] {
+  const counts = countItemsByField(items, 'categoryId')
+  return categories.filter((category) => (counts[category.id] ?? 0) > 0)
 }
 
 export const SORT_FIELD_LABELS: Record<SortField, string> = {
