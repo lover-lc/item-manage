@@ -1,6 +1,6 @@
-import { ArrowLeft, GripVertical, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import TodoListManage from '../components/TodoListManage'
 import {
   useCreateTodoList,
   useDeleteTodoList,
@@ -8,153 +8,151 @@ import {
   useTodos,
   useUpdateTodoList,
 } from '../hooks/use-todos'
+import type { TodoList } from '../types/todo-types'
 
-const fieldClass =
-  'w-full rounded-button border border-bg-hover bg-bg px-3 py-2 text-sm outline-none focus:border-primary'
+function DeleteListDialog({
+  listName,
+  count,
+  onCancel,
+  onDeleteWithMove,
+  onDeleteAll,
+  canMove,
+  moveTargetName,
+  isPending,
+}: {
+  listName: string
+  count: number
+  onCancel: () => void
+  onDeleteWithMove?: () => void
+  onDeleteAll: () => void
+  canMove: boolean
+  moveTargetName?: string
+  isPending?: boolean
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-card bg-bg-card p-6 shadow-lg"
+      >
+        <h2 className="text-lg font-medium text-text">删除清单</h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          「{listName}」中有 {count} 个待办，如何处理？
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          {canMove && onDeleteWithMove ? (
+            <button
+              type="button"
+              onClick={onDeleteWithMove}
+              disabled={isPending}
+              className="rounded-button bg-primary px-4 py-2 text-sm text-white disabled:opacity-50"
+            >
+              移至「{moveTargetName}」并删除清单
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onDeleteAll}
+            disabled={isPending}
+            className="rounded-button bg-status-expired px-4 py-2 text-sm text-white disabled:opacity-50"
+          >
+            删除清单及全部待办
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isPending}
+            className="rounded-button px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function ListManagePage() {
   const navigate = useNavigate()
-  const { data: lists = [] } = useTodoLists()
+  const { data: lists = [], isLoading } = useTodoLists()
   const { data: todos = [] } = useTodos()
   const createList = useCreateTodoList()
   const updateList = useUpdateTodoList()
   const deleteList = useDeleteTodoList()
+  const [listToDelete, setListToDelete] = useState<TodoList | null>(null)
 
-  const [newName, setNewName] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
+  const todoCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const todo of todos) {
+      counts[todo.listId] = (counts[todo.listId] ?? 0) + 1
+    }
+    return counts
+  }, [todos])
 
-  const todoCountByList = new Map<string, number>()
-  for (const todo of todos) {
-    todoCountByList.set(todo.listId, (todoCountByList.get(todo.listId) ?? 0) + 1)
-  }
+  const moveTarget = lists.find((l) => l.id !== listToDelete?.id)
 
   return (
-    <div className="p-4">
-      <div className="mb-4 flex items-center gap-2">
-        <button type="button" onClick={() => navigate(-1)} className="p-1">
-          <ArrowLeft className="size-5 text-text-secondary" />
+    <div className="px-4 py-3">
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="text-sm text-primary"
+        >
+          返回
         </button>
-        <h1 className="text-lg font-medium">清单管理</h1>
+        <h1 className="text-lg font-medium text-text">清单管理</h1>
+        <span className="w-8" />
       </div>
 
-      <ul className="space-y-2">
-        {lists.map((list, index) => (
-          <li
-            key={list.id}
-            className="flex items-center gap-2 rounded-card border border-bg-hover bg-bg-card p-3"
-          >
-            <GripVertical className="size-4 text-text-tertiary" />
-            <span
-              className="size-4 shrink-0 rounded-full"
-              style={{ backgroundColor: list.color ?? '#2c3e50' }}
-            />
-            {editingId === list.id ? (
-              <form
-                className="flex flex-1 gap-2"
-                onSubmit={async (e) => {
-                  e.preventDefault()
-                  await updateList.mutateAsync({ id: list.id, name: editName })
-                  setEditingId(null)
-                }}
-              >
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className={fieldClass}
-                />
-                <button type="submit" className="text-sm text-primary">
-                  保存
-                </button>
-              </form>
-            ) : (
-              <>
-                <span className="flex-1 text-sm">
-                  {list.name}
-                  <span className="ml-1 text-text-tertiary">
-                    ({todoCountByList.get(list.id) ?? 0})
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className="text-xs text-primary"
-                  onClick={() => {
-                    setEditingId(list.id)
-                    setEditName(list.name)
-                  }}
-                >
-                  编辑
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const count = todoCountByList.get(list.id) ?? 0
-                    if (count > 0) {
-                      const moveTo = lists.find((l) => l.id !== list.id)
-                      if (
-                        moveTo &&
-                        window.confirm(`将 ${count} 个待办移至「${moveTo.name}」并删除清单？`)
-                      ) {
-                        await deleteList.mutateAsync({
-                          id: list.id,
-                          moveToListId: moveTo.id,
-                        })
-                      } else if (
-                        window.confirm(`删除清单及其中 ${count} 个待办？`)
-                      ) {
-                        await deleteList.mutateAsync({ id: list.id })
-                      }
-                    } else {
-                      await deleteList.mutateAsync({ id: list.id })
-                    }
-                  }}
-                  className="text-status-expired"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-                {index > 0 ? (
-                  <button
-                    type="button"
-                    className="text-xs text-text-secondary"
-                    onClick={() =>
-                      updateList.mutate({
-                        id: list.id,
-                        sortOrder: lists[index - 1].sortOrder,
-                      })
-                    }
-                  >
-                    上移
-                  </button>
-                ) : null}
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      <form
-        className="mt-4 flex gap-2"
-        onSubmit={async (e) => {
-          e.preventDefault()
-          if (!newName.trim()) return
-          await createList.mutateAsync({ name: newName.trim() })
-          setNewName('')
+      <TodoListManage
+        lists={lists}
+        todoCounts={todoCounts}
+        isLoading={isLoading}
+        onAdd={async (name) => {
+          await createList.mutateAsync({ name })
         }}
-      >
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="新清单名称"
-          className={fieldClass}
+        onRename={async (id, name) => {
+          await updateList.mutateAsync({ id, name })
+        }}
+        onDeleteRequest={(list) => {
+          const count = todoCounts[list.id] ?? 0
+          if (count === 0) {
+            void deleteList.mutateAsync({ id: list.id })
+          } else {
+            setListToDelete(list)
+          }
+        }}
+      />
+
+      {listToDelete ? (
+        <DeleteListDialog
+          listName={listToDelete.name}
+          count={todoCounts[listToDelete.id] ?? 0}
+          canMove={Boolean(moveTarget)}
+          moveTargetName={moveTarget?.name}
+          isPending={deleteList.isPending}
+          onCancel={() => setListToDelete(null)}
+          onDeleteWithMove={
+            moveTarget
+              ? () => {
+                  void deleteList
+                    .mutateAsync({
+                      id: listToDelete.id,
+                      moveToListId: moveTarget.id,
+                    })
+                    .then(() => setListToDelete(null))
+                }
+              : undefined
+          }
+          onDeleteAll={() => {
+            void deleteList
+              .mutateAsync({ id: listToDelete.id })
+              .then(() => setListToDelete(null))
+          }}
         />
-        <button
-          type="submit"
-          className="flex shrink-0 items-center gap-1 rounded-button border border-bg-hover px-3 text-sm"
-        >
-          <Plus className="size-4" />
-          添加
-        </button>
-      </form>
+      ) : null}
     </div>
   )
 }

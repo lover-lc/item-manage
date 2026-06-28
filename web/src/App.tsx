@@ -10,7 +10,6 @@ import { useSeedUserDefaults } from './modules/items/hooks/use-seed'
 import PortalPage from './modules/portal/pages/PortalPage'
 import SettingsPage from './modules/portal/pages/SettingsPage'
 import ListManagePage from './modules/todos/pages/ListManagePage'
-import TodoDetailPage from './modules/todos/pages/TodoDetailPage'
 import TodoFormPage from './modules/todos/pages/TodoFormPage'
 import TodosPage from './modules/todos/pages/TodosPage'
 import TodoTabLayout from './modules/todos/components/layout/TodoTabLayout'
@@ -59,7 +58,6 @@ function AppRoutes() {
                 <Route path="lists" element={<ListManagePage />} />
               </Route>
               <Route path=":id/edit" element={<TodoFormPage />} />
-              <Route path=":id" element={<TodoDetailPage />} />
             </Route>
           </Route>
         </Route>

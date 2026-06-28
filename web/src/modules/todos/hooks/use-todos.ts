@@ -212,7 +212,7 @@ export function useCreateTodo() {
           list_id: input.listId,
           creator_id: currentMemberId,
           assignee_id: input.assigneeId,
-          priority: input.priority,
+          priority: input.priority ?? null,
           start_date: input.startDate || null,
           due_date: input.dueDate,
           require_feedback: input.requireFeedback,
@@ -288,7 +288,9 @@ export function useUpdateTodo() {
       }
       if (input.patch.listId !== undefined) patch.list_id = input.patch.listId
       if (input.patch.assigneeId !== undefined) patch.assignee_id = input.patch.assigneeId
-      if (input.patch.priority !== undefined) patch.priority = input.patch.priority
+      if (input.patch.priority !== undefined) {
+        patch.priority = input.patch.priority
+      }
       if (input.patch.startDate !== undefined) patch.start_date = input.patch.startDate || null
       if (input.patch.dueDate !== undefined) patch.due_date = input.patch.dueDate
       if (input.patch.requireFeedback !== undefined) {
@@ -444,6 +446,45 @@ export function useTodoStatusAction() {
       void queryClient.invalidateQueries({ queryKey: ['todo', vars.id] })
       void queryClient.invalidateQueries({ queryKey: ['todo-logs', vars.id] })
       void queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      void queryClient.invalidateQueries({ queryKey: ['portal-stats'] })
+    },
+  })
+}
+
+export function useToggleTodoComplete() {
+  const queryClient = useQueryClient()
+  const { currentMemberId } = useCurrentMember()
+
+  return useMutation({
+    mutationFn: async (todo: { id: string; status: string }) => {
+      if (!supabase || !currentMemberId) throw new Error('未选择成员')
+
+      const isCompleted = todo.status === 'completed'
+      const nextStatus = isCompleted ? 'in_progress' : 'completed'
+      const patch = isCompleted
+        ? { status: nextStatus, completed_at: null }
+        : { status: nextStatus, completed_at: new Date().toISOString() }
+
+      const { data, error } = await supabase
+        .from('todo_items')
+        .update(patch)
+        .eq('id', todo.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      await logStatusChange(
+        todo.id,
+        todo.status as never,
+        nextStatus as never,
+        currentMemberId,
+      )
+
+      return toTodoItem(data as DbItem)
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['todos'] })
       void queryClient.invalidateQueries({ queryKey: ['portal-stats'] })
     },
   })

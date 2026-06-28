@@ -6,8 +6,50 @@ import TodoCard from '../components/TodoCard'
 import {
   useTodoLists,
   useTodos,
-  useTodoStatusAction,
+  useToggleTodoComplete,
 } from '../hooks/use-todos'
+import type { TodoItem } from '../types/todo-types'
+
+function TodoListGroup({
+  title,
+  color,
+  items,
+  onToggleComplete,
+}: {
+  title: string
+  color?: string | null
+  items: TodoItem[]
+  onToggleComplete: (todo: TodoItem) => void
+}) {
+  if (items.length === 0) return null
+
+  const active = items.filter((t) => t.status !== 'completed')
+  const completed = items.filter((t) => t.status === 'completed')
+  const ordered = [...active, ...completed]
+
+  return (
+    <section>
+      <div className="mb-1 flex items-center gap-2 px-1">
+        {color ? (
+          <span
+            className="size-2.5 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+        ) : null}
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+          {title}
+        </h2>
+      </div>
+      <ul className="overflow-hidden rounded-card bg-bg-card divide-y divide-bg-hover">
+        {ordered.map((todo) => (
+          <li key={todo.id}>
+            <TodoCard todo={todo} onToggleComplete={onToggleComplete} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 export default function TodosPage() {
   const location = useLocation()
@@ -23,8 +65,7 @@ export default function TodosPage() {
     filter === 'all' ? undefined : filter,
   )
   const { data: lists = [] } = useTodoLists()
-  const statusAction = useTodoStatusAction()
-  const [collapsedLists, setCollapsedLists] = useState<Set<string>>(new Set())
+  const toggleComplete = useToggleTodoComplete()
   const [search, setSearch] = useState('')
 
   useRealtimeTodos()
@@ -40,7 +81,7 @@ export default function TodosPage() {
   }, [todos, search])
 
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof filteredTodos>()
+    const map = new Map<string, TodoItem[]>()
     for (const list of lists) {
       map.set(list.id, [])
     }
@@ -52,6 +93,10 @@ export default function TodosPage() {
     return map
   }, [lists, filteredTodos])
 
+  function handleToggle(todo: TodoItem) {
+    void toggleComplete.mutateAsync({ id: todo.id, status: todo.status })
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8 text-sm text-text-secondary">
@@ -62,82 +107,45 @@ export default function TodosPage() {
 
   if (isTimeline) {
     return (
-      <div className="p-4">
+      <div className="px-4 py-3">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="搜索待办…"
-          className="mb-4 w-full rounded-button border border-bg-hover bg-bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+          className="mb-3 w-full rounded-button border border-bg-hover bg-bg-card px-3 py-2 text-sm outline-none focus:border-primary"
         />
-        <TimelineView todos={filteredTodos.filter((t) => t.status !== 'completed')} />
+        <TimelineView todos={filteredTodos} onToggleComplete={handleToggle} />
       </div>
     )
   }
 
   return (
-    <div className="p-4">
+    <div className="px-4 py-3">
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="搜索待办…"
-        className="mb-4 w-full rounded-button border border-bg-hover bg-bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+        className="mb-3 w-full rounded-button border border-bg-hover bg-bg-card px-3 py-2 text-sm outline-none focus:border-primary"
       />
 
       {lists.length === 0 ? (
-        <p className="text-center text-sm text-text-secondary">
+        <p className="py-12 text-center text-sm text-text-secondary">
           暂无清单，请先创建清单
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {lists.map((list) => {
             const items = grouped.get(list.id) ?? []
             if (items.length === 0 && filter !== 'all') return null
-            const collapsed = collapsedLists.has(list.id)
 
             return (
-              <section key={list.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCollapsedLists((prev) => {
-                      const next = new Set(prev)
-                      if (next.has(list.id)) next.delete(list.id)
-                      else next.add(list.id)
-                      return next
-                    })
-                  }}
-                  className="mb-2 flex w-full items-center gap-2 text-left text-sm font-medium"
-                >
-                  <span
-                    className="size-3 rounded-full"
-                    style={{ backgroundColor: list.color ?? '#2c3e50' }}
-                  />
-                  {list.name}
-                  <span className="text-text-tertiary">({items.length})</span>
-                </button>
-                {!collapsed ? (
-                  <div className="space-y-2">
-                    {items.map((todo) => (
-                      <TodoCard
-                        key={todo.id}
-                        todo={todo}
-                        onQuickComplete={(id) => {
-                          const item = items.find((t) => t.id === id)
-                          if (!item) return
-                          const role =
-                            item.assigneeId === item.creatorId ? 'assignee' : 'assignee'
-                          void statusAction.mutateAsync({
-                            id,
-                            action: 'complete',
-                            role,
-                            currentStatus: item.status,
-                          })
-                        }}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </section>
+              <TodoListGroup
+                key={list.id}
+                title={list.name}
+                color={list.color}
+                items={items}
+                onToggleComplete={handleToggle}
+              />
             )
           })}
         </div>

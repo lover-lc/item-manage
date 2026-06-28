@@ -51,7 +51,7 @@ export type TodoItem = {
   listId: string
   creatorId: string
   assigneeId: string
-  priority: TodoPriority
+  priority: TodoPriority | null
   startDate: string | null
   dueDate: string | null
   requireFeedback: boolean
@@ -89,7 +89,7 @@ export type TodoFormInput = {
   description?: string
   listId: string
   assigneeId: string
-  priority: TodoPriority
+  priority?: TodoPriority | null
   startDate?: string
   dueDate: string
   requireFeedback: boolean

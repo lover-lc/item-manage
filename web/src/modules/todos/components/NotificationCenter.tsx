@@ -65,7 +65,7 @@ export default function NotificationCenter() {
                   >
                     {n.todoItemId ? (
                       <Link
-                        to={`/todos/${n.todoItemId}`}
+                        to={`/todos/${n.todoItemId}/edit`}
                         onClick={() => {
                           if (!n.isRead) markRead.mutate(n.id)
                           setOpen(false)
