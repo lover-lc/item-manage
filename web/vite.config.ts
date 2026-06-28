@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -5,6 +6,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: '/one-piece/',
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -14,8 +20,8 @@ export default defineConfig({
       manifest: {
         name: '物品整理',
         short_name: '物品整理',
-        theme_color: '#2c3e50',
-        background_color: '#fafafa',
+        theme_color: '#F5F5F7',
+        background_color: '#FAF5F2',
         display: 'standalone',
         start_url: '/one-piece/',
         scope: '/one-piece/',

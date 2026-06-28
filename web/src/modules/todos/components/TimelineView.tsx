@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useUpdateTodoDueDate } from '../hooks/use-todos'
 import type { TodoItem } from '../types/todo-types'
 import TimelineTodoItem from './TimelineTodoItem'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 type DateGroup = {
   dateKey: string
@@ -126,60 +128,56 @@ export default function TimelineView({ todos, onToggleComplete }: TimelineViewPr
   }
 
   return (
-    <div className="relative pb-4">
-      <div
-        className="absolute top-3 bottom-3 left-[7px] w-0.5 bg-gradient-to-b from-primary/30 via-bg-hover to-transparent"
-        aria-hidden
-      />
+    <div className="space-y-4 pb-4">
+      {groups.map((group) => (
+        <Card
+          key={group.dateKey}
+          className={cn(
+            'overflow-hidden rounded-[20px] border-border/60 shadow-card',
+            group.dateKey !== 'no-date' && 'bg-[#F5F5F7]/50',
+          )}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={() => handleDrop(group.dateKey)}
+        >
+          <CardHeader className="flex-row items-start gap-3 space-y-0 px-4 pb-2 pt-4">
+            <div
+              className={cn(
+                'mt-1 size-3.5 shrink-0 rounded-full border-2',
+                group.dotClass,
+              )}
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className={cn('text-base font-semibold leading-tight', group.accentClass)}>
+                {group.label}
+              </p>
+              {group.sublabel ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">{group.sublabel}</p>
+              ) : null}
+            </div>
+          </CardHeader>
 
-      <div className="space-y-6">
-        {groups.map((group) => (
-          <section
-            key={group.dateKey}
-            className="relative"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop(group.dateKey)}
-          >
-            <div className="mb-3 flex items-start gap-3">
+          <CardContent className="space-y-2 px-3 pb-3 pt-0">
+            {group.items.map((todo) => (
               <div
-                className={[
-                  'relative z-10 mt-1 size-3.5 shrink-0 rounded-full border-2',
-                  group.dotClass,
-                ].join(' ')}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className={`text-base font-semibold leading-tight ${group.accentClass}`}>
-                  {group.label}
-                </p>
-                {group.sublabel ? (
-                  <p className="mt-0.5 text-xs text-text-tertiary">{group.sublabel}</p>
-                ) : null}
+                key={todo.id}
+                draggable
+                onDragStart={() => setDraggingId(todo.id)}
+                onDragEnd={() => setDraggingId(null)}
+                className={cn(
+                  'overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm transition-shadow',
+                  draggingId === todo.id ? 'opacity-60 shadow-md' : 'hover:shadow-md',
+                )}
+              >
+                <TimelineTodoItem
+                  todo={todo}
+                  onToggleComplete={onToggleComplete}
+                />
               </div>
-            </div>
-
-            <div className="ml-6 space-y-2 border-l border-dashed border-bg-hover pl-4">
-              {group.items.map((todo) => (
-                <div
-                  key={todo.id}
-                  draggable
-                  onDragStart={() => setDraggingId(todo.id)}
-                  onDragEnd={() => setDraggingId(null)}
-                  className={[
-                    'rounded-card border border-bg-hover/80 bg-bg-card shadow-sm transition-shadow',
-                    draggingId === todo.id ? 'opacity-60 shadow-md' : 'hover:shadow-md',
-                  ].join(' ')}
-                >
-                  <TimelineTodoItem
-                    todo={todo}
-                    onToggleComplete={onToggleComplete}
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
     </div>
   )
 }

@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
 import { useLocation } from 'react-router-dom'
 import { useRealtimeTodos } from '../../../shared/hooks/use-realtime'
 import TimelineView from '../components/TimelineView'
@@ -36,17 +38,19 @@ function TodoListGroup({
             style={{ backgroundColor: color }}
           />
         ) : null}
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {title}
         </h2>
       </div>
-      <ul className="overflow-hidden rounded-card bg-bg-card divide-y divide-bg-hover">
+      <Card className="overflow-hidden py-0 shadow-card">
+        <ul className="divide-y divide-border">
         {ordered.map((todo) => (
           <li key={todo.id}>
             <TodoCard todo={todo} onToggleComplete={onToggleComplete} />
           </li>
         ))}
-      </ul>
+        </ul>
+      </Card>
     </section>
   )
 }
@@ -108,11 +112,11 @@ export default function TodosPage() {
   if (isTimeline) {
     return (
       <div className="px-4 py-3">
-        <input
+        <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="搜索待办…"
-          className="mb-3 w-full rounded-button border border-bg-hover bg-bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+          className="mb-3 shadow-sm"
         />
         <TimelineView todos={filteredTodos} onToggleComplete={handleToggle} />
       </div>
@@ -121,11 +125,11 @@ export default function TodosPage() {
 
   return (
     <div className="px-4 py-3">
-      <input
+      <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="搜索待办…"
-        className="mb-3 w-full rounded-button border border-bg-hover bg-bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+        className="mb-3 shadow-sm"
       />
 
       {lists.length === 0 ? (

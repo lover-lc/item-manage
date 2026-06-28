@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Area, Category } from '../lib/types'
-import Sheet from '../../../shared/components/ui/Sheet'
+import BottomSheet from '../../../shared/components/ui/BottomSheet'
 
 export type ManageEntityType = 'area' | 'category'
 
@@ -77,7 +77,7 @@ export default function DeleteConfirmSheet({
     (targetId !== undefined && targets.length > 0)
 
   return (
-    <Sheet
+    <BottomSheet
       open={open}
       onClose={onClose}
       title={`删除${typeLabel}`}
@@ -164,6 +164,6 @@ export default function DeleteConfirmSheet({
           </button>
         </div>
       </div>
-    </Sheet>
+    </BottomSheet>
   )
 }

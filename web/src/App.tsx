@@ -16,6 +16,7 @@ import TodoTabLayout from './modules/todos/components/layout/TodoTabLayout'
 import { useSeedDefaultTodoList } from './modules/todos/hooks/use-seed-todo'
 import RequireAuth from './shared/components/RequireAuth'
 import RequireMember from './shared/components/RequireMember'
+import ThemeShell from './shared/components/ThemeShell'
 import { AuthProvider } from './shared/hooks/use-auth'
 import LoginPage from './shared/pages/LoginPage'
 
@@ -29,7 +30,8 @@ function SeedLayout() {
 
 function AppRoutes() {
   return (
-    <Routes>
+    <ThemeShell>
+      <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<RequireMember />}>
@@ -64,7 +66,8 @@ function AppRoutes() {
       </Route>
       <Route path="/" element={<Navigate to="/portal" replace />} />
       <Route path="*" element={<Navigate to="/portal" replace />} />
-    </Routes>
+      </Routes>
+    </ThemeShell>
   )
 }
 

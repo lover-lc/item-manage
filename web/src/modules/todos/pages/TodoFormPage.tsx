@@ -1,7 +1,7 @@
 import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import Sheet from '../../../shared/components/ui/Sheet'
+import BottomSheet from '../../../shared/components/ui/BottomSheet'
 import { useCurrentMember } from '../../../shared/hooks/use-current-member'
 import { useFamilyMembers } from '../../../shared/hooks/use-family-members'
 import {
@@ -152,7 +152,7 @@ function QuickAddSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title={title}>
+    <BottomSheet open={open} onClose={onClose} title={title}>
       <form onSubmit={handleSubmit} className="space-y-4 p-4">
         <input
           type="text"
@@ -179,7 +179,7 @@ function QuickAddSheet({
           </button>
         </div>
       </form>
-    </Sheet>
+    </BottomSheet>
   )
 }
 
@@ -207,7 +207,7 @@ function OptionSheet({
   manageLabel?: string
 }) {
   return (
-    <Sheet open={open} onClose={onClose} title={title}>
+    <BottomSheet open={open} onClose={onClose} title={title}>
       <ul className="max-h-[50svh] overflow-y-auto">
         {options.map((opt) => (
           <li key={opt.id}>
@@ -250,7 +250,7 @@ function OptionSheet({
           </Link>
         ) : null}
       </div>
-    </Sheet>
+    </BottomSheet>
   )
 }
 

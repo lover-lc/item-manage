@@ -1,8 +1,10 @@
 import type { TodoStatus } from '../types/todo-types'
 import { TODO_STATUS_LABELS } from '../types/todo-types'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
-const STATUS_COLORS: Record<TodoStatus, string> = {
-  draft: 'bg-text-tertiary/20 text-text-secondary',
+const STATUS_VARIANTS: Record<TodoStatus, string> = {
+  draft: 'bg-muted text-muted-foreground',
   pending_accept: 'bg-amber-100 text-amber-800',
   accepted: 'bg-blue-100 text-blue-800',
   rejected: 'bg-red-100 text-red-800',
@@ -17,12 +19,13 @@ type StatusBadgeProps = {
   className?: string
 }
 
-export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {
+export default function StatusBadge({ status, className }: StatusBadgeProps) {
   return (
-    <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[status]} ${className}`}
+    <Badge
+      variant="secondary"
+      className={cn('rounded-full font-medium', STATUS_VARIANTS[status], className)}
     >
       {TODO_STATUS_LABELS[status]}
-    </span>
+    </Badge>
   )
 }
