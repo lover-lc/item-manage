@@ -8,6 +8,7 @@ import {
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import NotificationCenter from '../NotificationCenter'
 import MemberSwitcher from '../../../portal/components/MemberSwitcher'
+import BackToHomeButton from '../../../../shared/components/BackToHomeButton'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -23,9 +24,7 @@ export default function TodoTabLayout() {
     <div className="flex min-h-svh flex-col">
       <header className="border-b border-border bg-card/80 px-4 py-2 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-2">
-          <Link to="/portal" className="text-xs font-medium text-primary">
-            门户
-          </Link>
+          <BackToHomeButton />
           <div className="flex items-center gap-1">
             <MemberSwitcher />
             <NotificationCenter />

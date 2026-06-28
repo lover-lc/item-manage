@@ -1,6 +1,7 @@
 import { ArrowLeft, Bell, BellOff, LogOut, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import BackToHomeButton from '../../../shared/components/BackToHomeButton'
 import { useAuth } from '../../../shared/hooks/use-auth'
 import {
   MEMBER_COLORS,
@@ -216,11 +217,9 @@ export default function SettingsPage() {
           </button>
         </section>
 
-        <p className="text-center text-xs text-text-tertiary">
-          <Link to="/portal" className="text-primary">
-            返回门户
-          </Link>
-        </p>
+        <div className="flex justify-center pt-2">
+          <BackToHomeButton />
+        </div>
       </main>
     </div>
   )

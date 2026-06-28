@@ -1,5 +1,6 @@
 import { Home, Search, SlidersHorizontal } from 'lucide-react'
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
+import BackToHomeButton from '../../../../shared/components/BackToHomeButton'
 import { cn } from '@/lib/utils'
 
 const tabs = [
@@ -12,9 +13,7 @@ export default function TabLayout() {
   return (
     <div className="flex min-h-svh flex-col">
       <header className="border-b border-border bg-card/80 px-4 py-2 backdrop-blur-sm">
-        <Link to="/portal" className="text-xs font-medium text-primary">
-          返回门户
-        </Link>
+        <BackToHomeButton />
       </header>
       <main className="flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]">
         <Outlet />

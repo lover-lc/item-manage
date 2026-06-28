@@ -4,7 +4,9 @@ import { Card } from '@/components/ui/card'
 import { useLocation } from 'react-router-dom'
 import { useRealtimeTodos } from '../../../shared/hooks/use-realtime'
 import TimelineView from '../components/TimelineView'
+import TimelineViewModeToggle from '../components/TimelineViewModeToggle'
 import TodoCard from '../components/TodoCard'
+import { useTimelineMode } from '../hooks/use-timeline-mode'
 import {
   useTodoLists,
   useTodos,
@@ -66,8 +68,9 @@ export default function TodosPage() {
       : 'all'
 
   const { data: todos = [], isLoading } = useTodos(
-    filter === 'all' ? undefined : filter,
+    isTimeline ? 'assigned' : filter === 'all' ? undefined : filter,
   )
+  const [timelineMode, setTimelineMode] = useTimelineMode()
   const { data: lists = [] } = useTodoLists()
   const toggleComplete = useToggleTodoComplete()
   const [search, setSearch] = useState('')
@@ -118,7 +121,8 @@ export default function TodosPage() {
           placeholder="搜索待办…"
           className="mb-3 shadow-sm"
         />
-        <TimelineView todos={filteredTodos} onToggleComplete={handleToggle} />
+        <TimelineViewModeToggle value={timelineMode} onChange={setTimelineMode} />
+        <TimelineView todos={filteredTodos} mode={timelineMode} />
       </div>
     )
   }
