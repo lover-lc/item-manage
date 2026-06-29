@@ -2,34 +2,52 @@ import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { useLocation } from 'react-router-dom'
-import { useRealtimeTodos } from '../../../shared/hooks/use-realtime'
+import { useCurrentMember } from '../../../shared/hooks/use-current-member'
 import TimelineView from '../components/TimelineView'
 import TimelineViewModeToggle from '../components/TimelineViewModeToggle'
+import TimelineGranularityToggle from '../components/TimelineGranularityToggle'
+import TodoFilterBar from '../components/TodoFilterBar'
 import TodoCard from '../components/TodoCard'
 import { useTimelineMode } from '../hooks/use-timeline-mode'
+import { useGanttPrefs } from '../hooks/use-gantt-prefs'
+import { applyTodoFilters } from '../lib/todo-filter'
+import { useTodoUiStore } from '../store/todo-ui-store'
+import { buildListGroups } from '../lib/todo-list-placement'
+import { canDeleteTodo } from '../lib/negotiation-ui'
+import TodoActionDialog from '../components/TodoActionDialog'
+import SwipeRow from '../../../shared/components/ui/SwipeRow'
 import {
+  useDeleteTodo,
+  useNegotiationAction,
+  useRemindTodoCreator,
   useTodoLists,
+  useTodoStatusAction,
+  useTodoStatusReasons,
+  useTodoTags,
   useTodos,
   useToggleTodoComplete,
 } from '../hooks/use-todos'
+import { getTodoCheckboxAction } from '../services/todo-service'
 import type { TodoItem } from '../types/todo-types'
 
 function TodoListGroup({
   title,
   color,
   items,
-  onToggleComplete,
+  currentMemberId,
+  onCheckboxAction,
+  onDelete,
+  statusReasons,
 }: {
   title: string
   color?: string | null
   items: TodoItem[]
-  onToggleComplete: (todo: TodoItem) => void
+  currentMemberId: string | null
+  onCheckboxAction: (todo: TodoItem) => void
+  onDelete: (todo: TodoItem) => void
+  statusReasons?: Map<string, string>
 }) {
   if (items.length === 0) return null
-
-  const active = items.filter((t) => t.status !== 'completed')
-  const completed = items.filter((t) => t.status === 'completed')
-  const ordered = [...active, ...completed]
 
   return (
     <section>
@@ -46,11 +64,26 @@ function TodoListGroup({
       </div>
       <Card className="overflow-hidden py-0 shadow-card">
         <ul className="divide-y divide-border">
-        {ordered.map((todo) => (
-          <li key={todo.id}>
-            <TodoCard todo={todo} onToggleComplete={onToggleComplete} />
-          </li>
-        ))}
+          {items.map((todo) => {
+            const card = (
+              <TodoCard
+                todo={todo}
+                checkboxAction={getTodoCheckboxAction(todo, currentMemberId)}
+                onCheckboxAction={onCheckboxAction}
+                statusReason={statusReasons?.get(todo.id)}
+              />
+            )
+            const deletable = canDeleteTodo(todo, currentMemberId)
+            return (
+              <li key={todo.id}>
+                {deletable ? (
+                  <SwipeRow onDelete={() => onDelete(todo)}>{card}</SwipeRow>
+                ) : (
+                  card
+                )}
+              </li>
+            )
+          })}
         </ul>
       </Card>
     </section>
@@ -60,6 +93,7 @@ function TodoListGroup({
 export default function TodosPage() {
   const location = useLocation()
   const isTimeline = location.pathname.endsWith('/timeline')
+  const { currentMemberId } = useCurrentMember()
 
   const filter: 'assigned' | 'created' | 'all' = location.pathname.endsWith('/assigned')
     ? 'assigned'
@@ -71,13 +105,26 @@ export default function TodosPage() {
     isTimeline ? 'assigned' : filter === 'all' ? undefined : filter,
   )
   const [timelineMode, setTimelineMode] = useTimelineMode()
+  const { granularity, range, setGranularity, setRange } = useGanttPrefs()
   const { data: lists = [] } = useTodoLists()
+  const { data: tags = [] } = useTodoTags()
+  const { data: statusReasons = new Map<string, string>() } = useTodoStatusReasons(todos)
   const toggleComplete = useToggleTodoComplete()
+  const statusAction = useTodoStatusAction()
+  const confirmNegotiation = useNegotiationAction()
+  const remindCreator = useRemindTodoCreator()
+  const deleteTodo = useDeleteTodo()
   const [search, setSearch] = useState('')
+  const [toast, setToast] = useState<string | null>(null)
+  const [completeDialogTodo, setCompleteDialogTodo] = useState<TodoItem | null>(null)
 
-  useRealtimeTodos()
+  const showCompleted = useTodoUiStore((s) => s.showCompleted)
+  const listFilterIds = useTodoUiStore((s) => s.listFilterIds)
+  const tagFilterIds = useTodoUiStore((s) => s.tagFilterIds)
+  const sortField = useTodoUiStore((s) => s.sortField)
+  const sortOrder = useTodoUiStore((s) => s.sortOrder)
 
-  const filteredTodos = useMemo(() => {
+  const searchedTodos = useMemo(() => {
     if (!search.trim()) return todos
     const q = search.trim().toLowerCase()
     return todos.filter(
@@ -87,26 +134,124 @@ export default function TodosPage() {
     )
   }, [todos, search])
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, TodoItem[]>()
-    for (const list of lists) {
-      map.set(list.id, [])
-    }
-    for (const todo of filteredTodos) {
-      const arr = map.get(todo.listId) ?? []
-      arr.push(todo)
-      map.set(todo.listId, arr)
-    }
-    return map
-  }, [lists, filteredTodos])
+  const filteredTodos = useMemo(
+    () =>
+      applyTodoFilters(isTimeline ? todos : searchedTodos, {
+        showCompleted,
+        listFilterIds,
+        tagFilterIds,
+        sortField,
+        sortOrder,
+      }),
+    [
+      isTimeline,
+      todos,
+      searchedTodos,
+      showCompleted,
+      listFilterIds,
+      tagFilterIds,
+      sortField,
+      sortOrder,
+    ],
+  )
 
-  function handleToggle(todo: TodoItem) {
-    void toggleComplete.mutateAsync({ id: todo.id, status: todo.status })
+  const grouped = useMemo(() => {
+    const memberLists = new Map<string, string>()
+    const sharedLists = new Map<string, string[]>()
+    for (const todo of filteredTodos) {
+      if (todo.privateListId && currentMemberId) {
+        memberLists.set(`${todo.id}:${currentMemberId}`, todo.privateListId)
+      }
+      if (todo.sharedListId) sharedLists.set(todo.id, [todo.sharedListId])
+    }
+    return buildListGroups(filteredTodos, lists, currentMemberId, {
+      memberLists,
+      sharedLists,
+    })
+  }, [lists, filteredTodos, currentMemberId])
+
+  async function handleCheckboxAction(todo: TodoItem) {
+    const action = getTodoCheckboxAction(todo, currentMemberId)
+    if (action === 'none') return
+
+    try {
+      if (action === 'remind') {
+        await remindCreator.mutateAsync(todo)
+        setToast('已提醒创建人验收')
+        return
+      }
+
+      if (action === 'verify') {
+        await statusAction.mutateAsync({
+          id: todo.id,
+          action: 'verify',
+          role: 'creator',
+          currentStatus: todo.status,
+        })
+        return
+      }
+
+      if (action === 'accept') {
+        await confirmNegotiation.mutateAsync({
+          id: todo.id,
+          action: 'agree',
+          patch: {
+            title: todo.title,
+            description: todo.description ?? undefined,
+            privateListId: todo.privateListId ?? todo.listId,
+            sharedListId: todo.sharedListId,
+            assigneeId: todo.assigneeId,
+            priority: todo.priority,
+            startDate: todo.startDate ?? undefined,
+            dueDate: todo.dueDate,
+            requireFeedback: todo.requireFeedback,
+            recurrenceRule: todo.recurrenceRule,
+            tagIds: todo.tags?.map((t) => t.id),
+          },
+          todo,
+        })
+        return
+      }
+
+      if (action === 'uncomplete') {
+        await toggleComplete.mutateAsync({ id: todo.id, status: todo.status })
+        return
+      }
+
+      if (action === 'complete') {
+        if (todo.requireFeedback) {
+          setCompleteDialogTodo(todo)
+          return
+        }
+
+        await statusAction.mutateAsync({
+          id: todo.id,
+          action: 'complete',
+          role: 'assignee',
+          currentStatus: todo.status,
+        })
+      }
+    } catch (err) {
+      setToast(String((err as Error).message || '操作失败'))
+    }
+  }
+
+  async function handleDelete(todo: TodoItem) {
+    try {
+      if (todo.recurrenceRule || todo.parentRecurrenceId) {
+        const series = window.confirm('删除所有重复实例？取消则仅删除此项')
+        await deleteTodo.mutateAsync({ id: todo.id, deleteSeries: series })
+      } else {
+        await deleteTodo.mutateAsync({ id: todo.id })
+      }
+    } catch (err) {
+      setToast(String((err as Error).message || '删除失败'))
+    }
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8 text-sm text-text-secondary">
+      <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
         加载中…
       </div>
     )
@@ -114,15 +259,19 @@ export default function TodosPage() {
 
   if (isTimeline) {
     return (
-      <div className="px-4 py-3">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜索待办…"
-          className="mb-3 shadow-sm"
-        />
+      <div className="flex h-full min-h-0 flex-col px-4 py-3">
+        <TodoFilterBar lists={lists} tags={tags} todos={todos} />
         <TimelineViewModeToggle value={timelineMode} onChange={setTimelineMode} />
-        <TimelineView todos={filteredTodos} mode={timelineMode} />
+        <TimelineGranularityToggle value={granularity} onChange={setGranularity} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <TimelineView
+            todos={filteredTodos}
+            mode={timelineMode}
+            granularity={granularity}
+            range={range}
+            onApplyRange={setRange}
+          />
+        </div>
       </div>
     )
   }
@@ -135,15 +284,21 @@ export default function TodosPage() {
         placeholder="搜索待办…"
         className="mb-3 shadow-sm"
       />
+      <TodoFilterBar lists={lists} tags={tags} todos={searchedTodos} />
+
+      {toast ? (
+        <p className="mb-3 rounded-button bg-primary/10 px-3 py-2 text-sm text-primary">
+          {toast}
+        </p>
+      ) : null}
 
       {lists.length === 0 ? (
-        <p className="py-12 text-center text-sm text-text-secondary">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           暂无清单，请先创建清单
         </p>
       ) : (
         <div className="space-y-5">
-          {lists.map((list) => {
-            const items = grouped.get(list.id) ?? []
+          {grouped.map(({ list, items }) => {
             if (items.length === 0 && filter !== 'all') return null
 
             return (
@@ -152,12 +307,37 @@ export default function TodosPage() {
                 title={list.name}
                 color={list.color}
                 items={items}
-                onToggleComplete={handleToggle}
+                currentMemberId={currentMemberId}
+                onCheckboxAction={(todo) => void handleCheckboxAction(todo)}
+                onDelete={(todo) => void handleDelete(todo)}
+                statusReasons={statusReasons}
               />
             )
           })}
         </div>
       )}
+
+      <TodoActionDialog
+        mode="confirm_complete"
+        open={Boolean(completeDialogTodo)}
+        todoTitle={completeDialogTodo?.title ?? ''}
+        onCancel={() => setCompleteDialogTodo(null)}
+        onConfirm={async () => {
+          if (!completeDialogTodo) return
+          try {
+            await statusAction.mutateAsync({
+              id: completeDialogTodo.id,
+              action: 'complete',
+              role: 'assignee',
+              currentStatus: completeDialogTodo.status,
+            })
+            setCompleteDialogTodo(null)
+          } catch (err) {
+            setToast(String((err as Error).message || '操作失败'))
+          }
+        }}
+        isPending={statusAction.isPending}
+      />
     </div>
   )
 }

@@ -18,6 +18,9 @@ export type TodoNotificationType =
   | 'verified'
   | 'returned'
   | 'reminder'
+  | 'proposal_updated'
+
+export type TodoListVisibility = 'private' | 'shared'
 
 export type RecurrenceRule = {
   frequency: 'daily' | 'weekly' | 'monthly' | 'custom'
@@ -28,12 +31,23 @@ export type RecurrenceRule = {
   generatedCount?: number
 }
 
+export type NegotiationSnapshot = {
+  title: string
+  description: string | null
+  priority: TodoPriority | null
+  startDate: string | null
+  dueDate: string | null
+  tagIds: string[]
+  recurrenceRule: RecurrenceRule | null
+}
+
 export type TodoList = {
   id: string
   name: string
   ownerId: string
   color: string | null
   sortOrder: number
+  visibility: TodoListVisibility
   createdAt: string
 }
 
@@ -56,12 +70,18 @@ export type TodoItem = {
   dueDate: string | null
   requireFeedback: boolean
   status: TodoStatus
+  awaitingMemberId: string | null
+  negotiationSnapshot: NegotiationSnapshot | null
+  creatorAgreedAt: string | null
+  assigneeAgreedAt: string | null
   recurrenceRule: RecurrenceRule | null
   parentRecurrenceId: string | null
   completedAt: string | null
   createdAt: string
   updatedAt: string
   tags?: TodoTag[]
+  privateListId?: string | null
+  sharedListId?: string | null
 }
 
 export type TodoNotification = {
@@ -87,11 +107,12 @@ export type TodoStatusLog = {
 export type TodoFormInput = {
   title: string
   description?: string
-  listId: string
+  privateListId: string
+  sharedListId?: string | null
   assigneeId: string
   priority?: TodoPriority | null
   startDate?: string
-  dueDate: string
+  dueDate?: string | null
   requireFeedback: boolean
   recurrenceRule?: RecurrenceRule | null
   tagIds?: string[]

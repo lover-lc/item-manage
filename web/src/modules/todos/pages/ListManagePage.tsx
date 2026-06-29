@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import PageHeaderBar from '../../../shared/components/PageHeaderBar'
 import TodoListManage from '../components/TodoListManage'
 import {
   useCreateTodoList,
@@ -94,17 +95,16 @@ export default function ListManagePage() {
 
   return (
     <div className="px-4 py-3">
-      <div className="mb-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="text-sm text-primary"
-        >
-          返回
-        </button>
-        <h1 className="text-lg font-medium text-text">清单管理</h1>
-        <span className="w-8" />
-      </div>
+      <PageHeaderBar
+        embedded
+        leading={{
+          kind: 'button',
+          label: '返回',
+          onClick: () => navigate(-1),
+          variant: 'outline',
+        }}
+        title="清单管理"
+      />
 
       <TodoListManage
         lists={lists}

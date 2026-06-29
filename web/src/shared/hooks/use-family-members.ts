@@ -114,6 +114,7 @@ export function useUpdateFamilyMember() {
       id: string
       name?: string
       color?: string
+      avatarUrl?: string | null
       sortOrder?: number
     }) => {
       if (!supabase) throw new Error('未配置 Supabase')
@@ -121,6 +122,7 @@ export function useUpdateFamilyMember() {
       const patch: Record<string, unknown> = {}
       if (input.name !== undefined) patch.name = input.name.trim()
       if (input.color !== undefined) patch.color = input.color
+      if (input.avatarUrl !== undefined) patch.avatar_url = input.avatarUrl
       if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder
 
       const { data, error } = await supabase

@@ -82,3 +82,24 @@ export function useDeleteNotification() {
     },
   })
 }
+
+export function useMarkTodoNotificationsRead() {
+  const queryClient = useQueryClient()
+  const { currentMemberId } = useCurrentMember()
+
+  return useMutation({
+    mutationFn: async (todoItemId: string) => {
+      if (!supabase || !currentMemberId) return
+      const { error } = await supabase
+        .from('todo_notifications')
+        .update({ is_read: true })
+        .eq('todo_item_id', todoItemId)
+        .eq('recipient_id', currentMemberId)
+        .eq('is_read', false)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}

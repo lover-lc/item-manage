@@ -1,5 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import { useCurrentMember } from '../../../shared/hooks/use-current-member'
+import MemberAvatar from '../../../shared/components/MemberAvatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,11 +18,7 @@ export default function MemberSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="max-w-[9rem] gap-2 px-3">
-          <span
-            className="size-5 shrink-0 rounded-full"
-            style={{ backgroundColor: currentMember.color }}
-            aria-hidden
-          />
+          <MemberAvatar member={currentMember} size="sm" />
           <span className="truncate">{currentMember.name}</span>
           <ChevronDown className="size-4 shrink-0 opacity-60" />
         </Button>
@@ -33,11 +30,7 @@ export default function MemberSwitcher() {
             onClick={() => setCurrentMemberId(member.id)}
             className="gap-2"
           >
-            <span
-              className="size-4 shrink-0 rounded-full"
-              style={{ backgroundColor: member.color }}
-              aria-hidden
-            />
+            <MemberAvatar member={member} size="sm" />
             {member.name}
           </DropdownMenuItem>
         ))}

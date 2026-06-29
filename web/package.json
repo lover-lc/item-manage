@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "db:migrate": "node --env-file=.env.local scripts/setup-supabase.mjs"
+    "db:migrate": "node --env-file=.env.local scripts/setup-supabase.mjs",
+    "db:seed-gantt": "node --env-file=.env.local scripts/seed-gantt-todos.mjs"
   },
   "dependencies": {
     "@fontsource/plus-jakarta-sans": "^5.2.8",
@@ -25,6 +26,7 @@
     "radix-ui": "^1.6.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-easy-crop": "^6.0.2",
     "react-mobile-picker": "^1.2.0",
     "react-router-dom": "^7.18.0",
     "shadcn": "^4.12.0",

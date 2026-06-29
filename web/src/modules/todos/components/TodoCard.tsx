@@ -1,12 +1,20 @@
 import { Link } from 'react-router-dom'
+import type { TodoCheckboxAction } from '../services/todo-service'
+import { isTodoCheckboxChecked } from '../services/todo-service'
 import type { TodoItem } from '../types/todo-types'
 import { TODO_PRIORITY_LABELS } from '../types/todo-types'
+import { isReasonStatus } from '../lib/todo-status-reason'
+import TodoStatusReasonBanner from './TodoStatusReasonBanner'
 import { Checkbox } from '@/components/ui/checkbox'
+import { getTodoDisplayTitle } from '../lib/todo-display'
 import { cn } from '@/lib/utils'
+import TodoRelationBadge from './TodoRelationBadge'
 
 type TodoCardProps = {
   todo: TodoItem
-  onToggleComplete?: (todo: TodoItem) => void
+  checkboxAction: TodoCheckboxAction
+  onCheckboxAction?: (todo: TodoItem) => void
+  statusReason?: string | null
 }
 
 function formatDueLabel(dueDate: string, isOverdue: boolean): string {
@@ -18,22 +26,53 @@ function formatDueLabel(dueDate: string, isOverdue: boolean): string {
   return dueDate.slice(5).replace('-', '/')
 }
 
-export default function TodoCard({ todo, onToggleComplete }: TodoCardProps) {
+export default function TodoCard({
+  todo,
+  checkboxAction,
+  onCheckboxAction,
+  statusReason,
+}: TodoCardProps) {
+  const isChecked = isTodoCheckboxChecked(todo.status)
+  const isPendingReview = todo.status === 'pending_review'
+  const isRejectedOrReturned = isReasonStatus(todo.status)
   const isCompleted = todo.status === 'completed'
   const isOverdue =
-    !isCompleted &&
+    !isChecked &&
+    !isPendingReview &&
     todo.dueDate != null &&
     todo.dueDate < new Date().toISOString().slice(0, 10)
+  const canInteract = checkboxAction !== 'none'
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
+    <div
+      className={cn(
+        'flex items-center gap-3 px-4 py-2.5',
+        isPendingReview && 'bg-purple-50 dark:bg-purple-950/25',
+        isRejectedOrReturned && 'bg-orange-50/70 dark:bg-orange-950/20',
+        todo.status === 'rejected' && 'bg-red-50/70 dark:bg-red-950/20',
+      )}
+    >
       <Checkbox
-        checked={isCompleted}
-        onCheckedChange={() => onToggleComplete?.(todo)}
-        aria-label={isCompleted ? '标记为未完成' : '标记为完成'}
+        checked={isChecked}
+        onCheckedChange={() => {
+          if (canInteract) onCheckboxAction?.(todo)
+        }}
+        disabled={!canInteract}
+        aria-label={
+          checkboxAction === 'remind'
+            ? '催办验收'
+            : checkboxAction === 'verify'
+              ? '验收通过'
+              : isChecked
+                ? '标记为未完成'
+                : '标记为完成'
+        }
         className={cn(
           'size-[22px] rounded-full',
-          isCompleted && 'bg-primary data-[state=checked]:bg-primary',
+          isChecked && 'bg-primary data-[state=checked]:bg-primary',
+          isPendingReview &&
+            'border-purple-500 data-[state=unchecked]:border-purple-500 data-[state=unchecked]:bg-transparent',
+          !canInteract && 'opacity-50',
         )}
       />
 
@@ -43,16 +82,34 @@ export default function TodoCard({ todo, onToggleComplete }: TodoCardProps) {
             <p
               className={cn(
                 'truncate text-[17px] leading-snug',
-                isCompleted ? 'text-muted-foreground line-through' : 'text-foreground',
+                isCompleted
+                  ? 'text-muted-foreground line-through'
+                  : isPendingReview
+                    ? 'text-purple-700 dark:text-purple-300'
+                    : 'text-foreground',
               )}
             >
-              {todo.title}
+              {getTodoDisplayTitle(todo)}
             </p>
             {todo.description ? (
               <p className="mt-0.5 truncate text-sm text-muted-foreground">
                 {todo.description}
               </p>
             ) : null}
+            {isPendingReview ? (
+              <p className="mt-0.5 text-xs text-purple-600 dark:text-purple-400">
+                待验收
+              </p>
+            ) : null}
+            {statusReason && isRejectedOrReturned ? (
+              <TodoStatusReasonBanner
+                status={todo.status}
+                reasonText={statusReason}
+                compact
+                className="mt-0.5 line-clamp-2"
+              />
+            ) : null}
+            <TodoRelationBadge todo={todo} className="mt-0.5" />
             {todo.priority ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {TODO_PRIORITY_LABELS[todo.priority]}优先级
@@ -64,6 +121,7 @@ export default function TodoCard({ todo, onToggleComplete }: TodoCardProps) {
               className={cn(
                 'shrink-0 text-[15px]',
                 isOverdue ? 'text-destructive' : 'text-muted-foreground',
+                isPendingReview && 'text-purple-600 dark:text-purple-400',
               )}
             >
               {formatDueLabel(todo.dueDate, isOverdue)}

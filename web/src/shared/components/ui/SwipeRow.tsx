@@ -74,10 +74,10 @@ export default function SwipeRow({
   )
 
   return (
-    <div className="relative overflow-hidden rounded-card">
+    <div className="relative overflow-hidden rounded-xl bg-card">
       {!deleteDisabled && onDelete ? (
         <div
-          className="absolute inset-y-0 right-0 flex items-center justify-center bg-status-expired"
+          className="absolute inset-y-0 right-0 flex items-center justify-center bg-muted-foreground/80"
           style={{ width: ACTION_WIDTH }}
         >
           <button

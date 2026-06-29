@@ -1,4 +1,11 @@
 import type { TodoItem, TodoPriority } from '../types/todo-types'
+import {
+  formatMonthGroupLabel,
+  formatWeekLabel,
+  getOverviewGroupKey,
+  getWeekMonday,
+  type GanttGranularity,
+} from './gantt-scale'
 
 export type TimelineMode = 'due' | 'span'
 
@@ -242,8 +249,92 @@ export function buildGapBetween(
   ]
 }
 
+export function formatWeekSpineMeta(weekKey: string, anchorDate: string, today = getTodayIso()): DateSpineMeta {
+  const monday = getWeekMonday(anchorDate)
+  const sunday = addDays(monday, 6)
+  const containsToday = today >= monday && today <= sunday
+  const isOverdue = sunday < today
+
+  return {
+    dateKey: weekKey,
+    label: formatWeekLabel(weekKey),
+    sublabel: containsToday ? '本周' : `${formatDueLabel(monday)}`,
+    accentClass: isOverdue
+      ? 'text-status-expired'
+      : containsToday
+        ? 'text-primary'
+        : 'text-muted-foreground',
+    isToday: containsToday,
+    isOverdue,
+  }
+}
+
+export function formatMonthSpineMeta(monthKey: string, today = getTodayIso()): DateSpineMeta {
+  const [year, month] = monthKey.split('-').map(Number)
+  const monthStart = `${monthKey}-01`
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const monthEndDate = `${monthKey}-${String(lastDay).padStart(2, '0')}`
+  const containsToday = today >= monthStart && today <= monthEndDate
+  const isOverdue = monthEndDate < today
+
+  return {
+    dateKey: monthKey,
+    label: formatMonthGroupLabel(monthKey),
+    sublabel: containsToday ? '本月' : undefined,
+    accentClass: isOverdue
+      ? 'text-status-expired'
+      : containsToday
+        ? 'text-primary'
+        : 'text-muted-foreground',
+    isToday: containsToday,
+    isOverdue,
+  }
+}
+
+function buildCoarseGapBetween(
+  prevDate: string,
+  nextDate: string,
+  granularity: GanttGranularity,
+): OverviewGapSegment[] {
+  const gapDays = daysBetween(prevDate, nextDate) - 1
+  if (gapDays <= 0) return []
+
+  const gapStart = addDays(prevDate, 1)
+  const gapEnd = addDays(nextDate, -1)
+
+  if (granularity === 'week') {
+    const label =
+      gapStart === gapEnd
+        ? `${formatDueLabel(gapStart)} · 无待办`
+        : `${formatDueLabel(gapStart)} — ${formatDueLabel(gapEnd)} · 无待办`
+    return [
+      {
+        type: 'gap',
+        kind: 'medium',
+        fromDate: gapStart,
+        toDate: gapEnd,
+        label,
+      },
+    ]
+  }
+
+  const startMonth = Number(gapStart.split('-')[1])
+  const endMonth = Number(gapEnd.split('-')[1])
+  const label = `${startMonth} 月 — ${endMonth} 月 · 无待办`
+  return [
+    {
+      type: 'gap',
+      kind: 'medium',
+      fromDate: gapStart,
+      toDate: gapEnd,
+      label,
+    },
+  ]
+}
+
 export function buildOverviewSegments(
   todos: TodoItem[],
+  granularity: GanttGranularity = 'day',
   today = getTodayIso(),
 ): {
   segments: OverviewSegment[]
@@ -254,7 +345,7 @@ export function buildOverviewSegments(
   let current: { dateKey: string; todos: TodoItem[] } | null = null
 
   for (const todo of dated) {
-    const dateKey = todo.dueDate!
+    const dateKey = getOverviewGroupKey(todo.dueDate!, granularity)
     if (current && current.dateKey === dateKey) {
       current.todos.push(todo)
     } else {
@@ -267,15 +358,28 @@ export function buildOverviewSegments(
   const segments: OverviewSegment[] = []
   for (let index = 0; index < groups.length; index++) {
     const group = groups[index]!
+    const spine =
+      granularity === 'day'
+        ? formatSpineMeta(group.dateKey, today)
+        : granularity === 'week'
+          ? formatWeekSpineMeta(group.dateKey, group.todos[0]!.dueDate!, today)
+          : formatMonthSpineMeta(group.dateKey, today)
+
     segments.push({
       type: 'date-group',
-      spine: formatSpineMeta(group.dateKey, today),
+      spine,
       todos: group.todos,
     })
 
     const next = groups[index + 1]
     if (next) {
-      segments.push(...buildGapBetween(group.dateKey, next.dateKey))
+      const prevLastDue = group.todos[group.todos.length - 1]!.dueDate!
+      const nextFirstDue = next.todos[0]!.dueDate!
+      if (granularity === 'day') {
+        segments.push(...buildGapBetween(prevLastDue, nextFirstDue))
+      } else {
+        segments.push(...buildCoarseGapBetween(prevLastDue, nextFirstDue, granularity))
+      }
     }
   }
 

@@ -9,10 +9,12 @@ import TabLayout from './modules/items/components/layout/TabLayout'
 import { useSeedUserDefaults } from './modules/items/hooks/use-seed'
 import PortalPage from './modules/portal/pages/PortalPage'
 import SettingsPage from './modules/portal/pages/SettingsPage'
-import ListManagePage from './modules/todos/pages/ListManagePage'
+import TodoManagePage, { TodoListsRedirect } from './modules/todos/pages/TodoManagePage'
 import TodoFormPage from './modules/todos/pages/TodoFormPage'
 import TodosPage from './modules/todos/pages/TodosPage'
 import TodoTabLayout from './modules/todos/components/layout/TodoTabLayout'
+import TodoModuleLayout from './modules/todos/components/layout/TodoModuleLayout'
+import { PendingActionsProvider } from './modules/todos/context/pending-actions-context'
 import { useSeedDefaultTodoList } from './modules/todos/hooks/use-seed-todo'
 import RequireAuth from './shared/components/RequireAuth'
 import RequireMember from './shared/components/RequireMember'
@@ -25,7 +27,11 @@ const queryClient = new QueryClient()
 function SeedLayout() {
   useSeedUserDefaults()
   useSeedDefaultTodoList()
-  return <Outlet />
+  return (
+    <PendingActionsProvider>
+      <Outlet />
+    </PendingActionsProvider>
+  )
 }
 
 function AppRoutes() {
@@ -50,14 +56,15 @@ function AppRoutes() {
               </Route>
             </Route>
 
-            <Route path="/todos">
+            <Route path="/todos" element={<TodoModuleLayout />}>
               <Route path="new" element={<TodoFormPage />} />
               <Route element={<TodoTabLayout />}>
                 <Route index element={<TodosPage />} />
                 <Route path="timeline" element={<TodosPage />} />
                 <Route path="assigned" element={<TodosPage />} />
                 <Route path="created" element={<TodosPage />} />
-                <Route path="lists" element={<ListManagePage />} />
+                <Route path="lists" element={<TodoListsRedirect />} />
+                <Route path="manage" element={<TodoManagePage />} />
               </Route>
               <Route path=":id/edit" element={<TodoFormPage />} />
             </Route>

@@ -352,21 +352,15 @@ export default function ManagePage() {
 
   return (
     <>
-      <header className="border-b border-bg-hover bg-bg-card px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={showHelp}
-            aria-label="帮助"
-            className="flex size-9 shrink-0 items-center justify-center rounded-button text-text-secondary hover:bg-bg-hover"
-          >
-            <HelpCircle className="size-5" strokeWidth={1.75} />
-          </button>
-          <h1 className="flex-1 text-center text-lg font-medium text-text">
-            管理
-          </h1>
-          <div className="size-9 shrink-0" aria-hidden="true" />
-        </div>
+      <header className="border-b border-bg-hover bg-bg-card px-4 py-2.5">
+        <button
+          type="button"
+          onClick={showHelp}
+          aria-label="帮助"
+          className="flex size-9 items-center justify-center rounded-button text-text-secondary hover:bg-bg-hover"
+        >
+          <HelpCircle className="size-5" strokeWidth={1.75} />
+        </button>
       </header>
 
       <div className="px-4 py-4">

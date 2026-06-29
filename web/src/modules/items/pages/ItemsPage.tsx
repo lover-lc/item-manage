@@ -1,4 +1,4 @@
-import { Package, Plus, SlidersHorizontal } from 'lucide-react'
+import { Package, SlidersHorizontal } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import FilterSortMenu from '../components/FilterSortMenu'
@@ -137,22 +137,12 @@ export default function ItemsPage() {
 
   return (
     <>
-      <header className="border-b border-bg-hover bg-bg-card px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <FilterSortMenu
-            areas={areas}
-            categories={categories}
-            items={allItems}
-          />
-          <h1 className="flex-1 text-center text-lg font-medium text-text">物品</h1>
-          <Link
-            to="/items/new"
-            aria-label="添加物品"
-            className="rounded-button p-2 text-primary hover:bg-bg-hover"
-          >
-            <Plus className="size-5" strokeWidth={1.75} />
-          </Link>
-        </div>
+      <header className="border-b border-bg-hover bg-bg-card px-4 py-2.5">
+        <FilterSortMenu
+          areas={areas}
+          categories={categories}
+          items={allItems}
+        />
       </header>
 
       <div className="px-4 py-4">

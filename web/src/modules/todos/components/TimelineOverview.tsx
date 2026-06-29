@@ -1,15 +1,21 @@
 import { useMemo } from 'react'
 import {
   buildOverviewSegments,
+  formatSpineMeta,
+  getTodayIso,
   OVERVIEW_SPINE_WIDTH,
   type OverviewDateGroupSegment,
   type OverviewGapSegment,
 } from '../lib/timeline-utils'
 import type { TodoItem } from '../types/todo-types'
 import { cn } from '@/lib/utils'
+import TodoRelationBadge from './TodoRelationBadge'
+
+import type { GanttGranularity } from '../lib/gantt-scale'
 
 type TimelineOverviewProps = {
   todos: TodoItem[]
+  granularity: GanttGranularity
 }
 
 function SpineLine() {
@@ -23,23 +29,38 @@ function SpineLine() {
 
 function OverviewTodoRow({ todo }: { todo: TodoItem }) {
   const isCompleted = todo.status === 'completed'
+  const today = getTodayIso()
+  const dueMeta = todo.dueDate ? formatSpineMeta(todo.dueDate, today) : null
 
   return (
     <div
       className={cn(
-        'flex h-8 items-center border-b border-border/50 px-3 hover:bg-muted/20',
+        'flex h-8 items-center gap-2 border-b border-border/50 px-3 hover:bg-muted/20',
         isCompleted && 'opacity-45',
       )}
     >
-      <p
-        className={cn(
-          'min-w-0 truncate text-sm',
-          isCompleted ? 'text-muted-foreground line-through' : 'text-foreground',
-        )}
-        title={todo.title}
-      >
-        {todo.title}
-      </p>
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <p
+          className={cn(
+            'min-w-0 truncate text-sm',
+            isCompleted ? 'text-muted-foreground line-through' : 'text-foreground',
+          )}
+          title={todo.title}
+        >
+          {todo.title}
+        </p>
+        <TodoRelationBadge todo={todo} compact className="shrink-0" />
+      </div>
+      {dueMeta ? (
+        <span
+          className={cn(
+            'shrink-0 text-xs tabular-nums',
+            dueMeta.accentClass,
+          )}
+        >
+          {dueMeta.label}
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -136,10 +157,10 @@ function NoDateSection({ items }: { items: TodoItem[] }) {
   )
 }
 
-export default function TimelineOverview({ todos }: TimelineOverviewProps) {
+export default function TimelineOverview({ todos, granularity }: TimelineOverviewProps) {
   const { segments, noDate } = useMemo(
-    () => buildOverviewSegments(todos),
-    [todos],
+    () => buildOverviewSegments(todos, granularity),
+    [todos, granularity],
   )
 
   if (segments.length === 0 && noDate.length === 0) {
@@ -149,20 +170,22 @@ export default function TimelineOverview({ todos }: TimelineOverviewProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-      {segments.map((segment, index) => {
-        if (segment.type === 'date-group') {
-          return <OverviewDateGroup key={segment.spine.dateKey} group={segment} />
-        }
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {segments.map((segment, index) => {
+          if (segment.type === 'date-group') {
+            return <OverviewDateGroup key={segment.spine.dateKey} group={segment} />
+          }
 
-        return (
-          <OverviewGapRow
-            key={`${segment.fromDate}-${segment.toDate}-${segment.kind}-${index}`}
-            gap={segment}
-          />
-        )
-      })}
-      <NoDateSection items={noDate} />
+          return (
+            <OverviewGapRow
+              key={`${segment.fromDate}-${segment.toDate}-${segment.kind}-${index}`}
+              gap={segment}
+            />
+          )
+        })}
+        <NoDateSection items={noDate} />
+      </div>
     </div>
   )
 }

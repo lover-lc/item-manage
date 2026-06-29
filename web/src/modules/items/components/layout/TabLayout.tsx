@@ -1,44 +1,88 @@
-import { Home, Search, SlidersHorizontal } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
-import BackToHomeButton from '../../../../shared/components/BackToHomeButton'
-import { cn } from '@/lib/utils'
+import {
+  Box,
+  LayoutDashboard,
+  LayoutPanelLeft,
+  Package,
+  Plus,
+  Search,
+  Settings,
+} from 'lucide-react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import AppTabBar, { tabBarBottomOffset } from '../../../../shared/components/AppTabBar'
+import { ItemsSearchFocusProvider, useItemsSearchFocus } from '../../context/items-search-focus'
 
 const tabs = [
-  { to: '/items', label: '物品', icon: Home, end: true },
-  { to: '/items/search', label: '搜索', icon: Search, end: false },
-  { to: '/items/manage', label: '管理', icon: SlidersHorizontal, end: false },
+  { to: '/items', label: '物品', icon: Package, activeIcon: Box, end: true },
+  {
+    to: '/items/search',
+    label: '搜索',
+    icon: Search,
+    activeIcon: Search,
+    end: false,
+  },
+  {
+    to: '/items/manage',
+    label: '管理',
+    icon: Settings,
+    activeIcon: Settings,
+    end: false,
+  },
+  {
+    to: '/portal',
+    label: '主页',
+    icon: LayoutDashboard,
+    activeIcon: LayoutPanelLeft,
+    end: true,
+  },
 ] as const
 
-export default function TabLayout() {
+function TabLayoutContent() {
+  const location = useLocation()
+  const { focusSearch } = useItemsSearchFocus()
+  const showFab = location.pathname === '/items'
+
+  const tabsWithHandlers = tabs.map((tab) =>
+    tab.to === '/items/search'
+      ? { ...tab, onRepeatActive: focusSearch }
+      : tab,
+  )
+
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="border-b border-border bg-card/80 px-4 py-2 backdrop-blur-sm">
-        <BackToHomeButton />
-      </header>
-      <main className="flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]">
+      <main
+        className="flex-1"
+        style={{
+          paddingBottom: showFab
+            ? `calc(${tabBarBottomOffset} + 3.5rem)`
+            : tabBarBottomOffset,
+        }}
+      >
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 border-t border-border bg-card/95 pb-safe-bottom backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-lg">
-          {tabs.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-1 flex-col items-center justify-center gap-0.5 text-xs transition-colors',
-                  isActive ? 'text-primary' : 'text-muted-foreground',
-                )
-              }
-            >
-              <Icon className="size-5" strokeWidth={1.75} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </div>
-      </nav>
+      {showFab ? (
+        <Button
+          size="icon-lg"
+          className="fixed right-4 z-30 size-12 rounded-full shadow-lg"
+          style={{ bottom: `calc(${tabBarBottomOffset} + 0.75rem)` }}
+          asChild
+        >
+          <Link to="/items/new" aria-label="添加物品">
+            <Plus className="size-6" />
+          </Link>
+        </Button>
+      ) : null}
+
+      <AppTabBar tabs={tabsWithHandlers} />
     </div>
+  )
+}
+
+export default function TabLayout() {
+  return (
+    <ItemsSearchFocusProvider>
+      <TabLayoutContent />
+    </ItemsSearchFocusProvider>
   )
 }

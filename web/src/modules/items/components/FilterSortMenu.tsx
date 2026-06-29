@@ -1,4 +1,4 @@
-import { ArrowUpDown, Check, SlidersHorizontal } from 'lucide-react'
+import { ArrowUpDown, Check, MapPin, Tag } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Area, Category } from '../lib/types'
 import {
@@ -118,13 +118,47 @@ function MenuSectionTitle({ children }: { children: ReactNode }) {
   )
 }
 
+function FilterButton({
+  active,
+  count,
+  ariaLabel,
+  onClick,
+  children,
+}: {
+  active: boolean
+  count: number
+  ariaLabel: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={onClick}
+      className={[
+        'relative rounded-button p-2 hover:bg-bg-hover hover:text-text',
+        active ? 'text-primary' : 'text-text-secondary',
+      ].join(' ')}
+    >
+      {children}
+      {count > 0 ? (
+        <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-white">
+          {count > 9 ? '9+' : count}
+        </span>
+      ) : null}
+    </button>
+  )
+}
+
 export default function FilterSortMenu({
   areas,
   categories,
   items,
   sortOnly = false,
 }: FilterSortMenuProps) {
-  const [filterOpen, setFilterOpen] = useState(false)
+  const [areaFilterOpen, setAreaFilterOpen] = useState(false)
+  const [categoryFilterOpen, setCategoryFilterOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
 
   const areaFilterIds = useUiStore((s) => s.areaFilterIds)
@@ -133,7 +167,8 @@ export default function FilterSortMenu({
   const sortOrder = useUiStore((s) => s.sortOrder)
   const toggleAreaFilter = useUiStore((s) => s.toggleAreaFilter)
   const toggleCategoryFilter = useUiStore((s) => s.toggleCategoryFilter)
-  const clearFilters = useUiStore((s) => s.clearFilters)
+  const clearAreaFilters = useUiStore((s) => s.clearAreaFilters)
+  const clearCategoryFilters = useUiStore((s) => s.clearCategoryFilters)
   const setSortField = useUiStore((s) => s.setSortField)
   const setSortOrder = useUiStore((s) => s.setSortOrder)
 
@@ -143,72 +178,106 @@ export default function FilterSortMenu({
     [categories, items],
   )
 
-  const hasActiveFilter =
-    areaFilterIds.length > 0 || categoryFilterIds.length > 0
+  const hasActiveAreaFilter = areaFilterIds.length > 0
+  const hasActiveCategoryFilter = categoryFilterIds.length > 0
 
   const sortFields = Object.keys(SORT_FIELD_LABELS) as SortField[]
   const sortOrders: SortOrder[] = ['asc', 'desc']
 
+  function closeAllMenus() {
+    setAreaFilterOpen(false)
+    setCategoryFilterOpen(false)
+    setSortOpen(false)
+  }
+
   return (
     <div className="flex items-center gap-1">
       {!sortOnly ? (
-        <div className="relative">
-          <button
-            type="button"
-            aria-label="筛选"
-            onClick={() => {
-              setSortOpen(false)
-              setFilterOpen((v) => !v)
-            }}
-            className={[
-              'rounded-button p-2 hover:bg-bg-hover hover:text-text',
-              hasActiveFilter ? 'text-primary' : 'text-text-secondary',
-            ].join(' ')}
-          >
-            <SlidersHorizontal className="size-5" strokeWidth={1.75} />
-          </button>
-          <MenuPanel open={filterOpen} onClose={() => setFilterOpen(false)}>
-            <MenuSectionTitle>区域</MenuSectionTitle>
-            {filterableAreas.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-text-tertiary">暂无区域</p>
-            ) : (
-              filterableAreas.map((area) => (
-                <FilterMenuItem
-                  key={area.id}
-                  label={area.name}
-                  selected={areaFilterIds.includes(area.id)}
-                  onClick={() => toggleAreaFilter(area.id)}
-                />
-              ))
-            )}
-            <MenuDivider />
-            <MenuSectionTitle>分类</MenuSectionTitle>
-            {filterableCategories.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-text-tertiary">暂无分类</p>
-            ) : (
-              filterableCategories.map((category) => (
-                <FilterMenuItem
-                  key={category.id}
-                  label={category.name}
-                  selected={categoryFilterIds.includes(category.id)}
-                  onClick={() => toggleCategoryFilter(category.id)}
-                />
-              ))
-            )}
-            {hasActiveFilter ? (
-              <>
-                <MenuDivider />
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="w-full px-3 py-2 text-left text-sm text-primary hover:bg-bg-hover"
-                >
-                  清除筛选
-                </button>
-              </>
-            ) : null}
-          </MenuPanel>
-        </div>
+        <>
+          <div className="relative">
+            <FilterButton
+              active={hasActiveAreaFilter}
+              count={areaFilterIds.length}
+              ariaLabel="按区域筛选"
+              onClick={() => {
+                setCategoryFilterOpen(false)
+                setSortOpen(false)
+                setAreaFilterOpen((v) => !v)
+              }}
+            >
+              <MapPin className="size-5" strokeWidth={1.75} />
+            </FilterButton>
+            <MenuPanel open={areaFilterOpen} onClose={() => setAreaFilterOpen(false)}>
+              <MenuSectionTitle>区域</MenuSectionTitle>
+              {filterableAreas.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-text-tertiary">暂无区域</p>
+              ) : (
+                filterableAreas.map((area) => (
+                  <FilterMenuItem
+                    key={area.id}
+                    label={area.name}
+                    selected={areaFilterIds.includes(area.id)}
+                    onClick={() => toggleAreaFilter(area.id)}
+                  />
+                ))
+              )}
+              {hasActiveAreaFilter ? (
+                <>
+                  <MenuDivider />
+                  <button
+                    type="button"
+                    onClick={clearAreaFilters}
+                    className="w-full px-3 py-2 text-left text-sm text-primary hover:bg-bg-hover"
+                  >
+                    清除区域筛选
+                  </button>
+                </>
+              ) : null}
+            </MenuPanel>
+          </div>
+
+          <div className="relative">
+            <FilterButton
+              active={hasActiveCategoryFilter}
+              count={categoryFilterIds.length}
+              ariaLabel="按分类筛选"
+              onClick={() => {
+                setAreaFilterOpen(false)
+                setSortOpen(false)
+                setCategoryFilterOpen((v) => !v)
+              }}
+            >
+              <Tag className="size-5" strokeWidth={1.75} />
+            </FilterButton>
+            <MenuPanel open={categoryFilterOpen} onClose={() => setCategoryFilterOpen(false)}>
+              <MenuSectionTitle>分类</MenuSectionTitle>
+              {filterableCategories.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-text-tertiary">暂无分类</p>
+              ) : (
+                filterableCategories.map((category) => (
+                  <FilterMenuItem
+                    key={category.id}
+                    label={category.name}
+                    selected={categoryFilterIds.includes(category.id)}
+                    onClick={() => toggleCategoryFilter(category.id)}
+                  />
+                ))
+              )}
+              {hasActiveCategoryFilter ? (
+                <>
+                  <MenuDivider />
+                  <button
+                    type="button"
+                    onClick={clearCategoryFilters}
+                    className="w-full px-3 py-2 text-left text-sm text-primary hover:bg-bg-hover"
+                  >
+                    清除分类筛选
+                  </button>
+                </>
+              ) : null}
+            </MenuPanel>
+          </div>
+        </>
       ) : null}
 
       <div className="relative">
@@ -216,7 +285,7 @@ export default function FilterSortMenu({
           type="button"
           aria-label="排序"
           onClick={() => {
-            setFilterOpen(false)
+            closeAllMenus()
             setSortOpen((v) => !v)
           }}
           className="rounded-button p-2 text-text-secondary hover:bg-bg-hover hover:text-text"

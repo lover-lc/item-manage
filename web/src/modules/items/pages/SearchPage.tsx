@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useItemsSearchFocus } from '../context/items-search-focus'
 import FilterSortMenu from '../components/FilterSortMenu'
 import ItemCard from '../components/ItemCard'
 import { useAreas } from '../hooks/use-areas'
@@ -14,6 +15,8 @@ import { useUiStore } from '../store/ui-store'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const { registerFocusHandler } = useItemsSearchFocus()
 
   const { data: items = [], isLoading: itemsLoading } = useItems()
   const { data: areas = [] } = useAreas()
@@ -24,6 +27,12 @@ export default function SearchPage() {
 
   const trimmedQuery = query.trim()
 
+  useEffect(() => {
+    registerFocusHandler(() => {
+      inputRef.current?.focus()
+    })
+  }, [registerFocusHandler])
+
   const results = useMemo(() => {
     const matched = searchItems(items, trimmedQuery, areas, categories)
     return sortItems(matched, sortField, sortOrder)
@@ -31,12 +40,8 @@ export default function SearchPage() {
 
   return (
     <>
-      <header className="border-b border-bg-hover bg-bg-card px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <FilterSortMenu areas={areas} categories={categories} items={items} sortOnly />
-          <h1 className="flex-1 text-center text-lg font-medium text-text">搜索</h1>
-          <div className="size-9 shrink-0" aria-hidden="true" />
-        </div>
+      <header className="border-b border-bg-hover bg-bg-card px-4 py-2.5">
+        <FilterSortMenu areas={areas} categories={categories} items={items} sortOnly />
       </header>
 
       <div className="px-4 py-4">
@@ -46,6 +51,7 @@ export default function SearchPage() {
             strokeWidth={1.75}
           />
           <input
+            ref={inputRef}
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -77,20 +83,20 @@ export default function SearchPage() {
                 }) === 'usedUp'
 
               return (
-              <Link
-                key={item.id}
-                to={`/items/${item.id}`}
-                className={[
-                  'block rounded-card px-4 py-3 hover:bg-bg-hover',
-                  isUsedUp ? 'bg-bg-hover/80' : 'bg-bg-card',
-                ].join(' ')}
-              >
-                <ItemCard
-                  item={item}
-                  dailyCost={computeItemDailyCost(item)}
-                  highlightQuery={trimmedQuery}
-                />
-              </Link>
+                <Link
+                  key={item.id}
+                  to={`/items/${item.id}`}
+                  className={[
+                    'block rounded-card px-4 py-3 hover:bg-bg-hover',
+                    isUsedUp ? 'bg-bg-hover/80' : 'bg-bg-card',
+                  ].join(' ')}
+                >
+                  <ItemCard
+                    item={item}
+                    dailyCost={computeItemDailyCost(item)}
+                    highlightQuery={trimmedQuery}
+                  />
+                </Link>
               )
             })}
           </div>

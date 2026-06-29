@@ -1,5 +1,5 @@
 import { Bell } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   useDeleteNotification,
   useMarkAllNotificationsRead,
@@ -7,6 +7,10 @@ import {
   useNotifications,
   useUnreadNotificationCount,
 } from '../hooks/use-notifications'
+import { useTodos } from '../hooks/use-todos'
+import { usePendingActions } from '../context/pending-actions-context'
+import { isNotificationDeletable } from '../lib/pending-actions'
+import { useCurrentMember } from '../../../shared/hooks/use-current-member'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,11 +21,40 @@ import {
 import { Separator } from '@/components/ui/separator'
 
 export default function NotificationCenter() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const inTodosModule = location.pathname.startsWith('/todos')
+  const { currentMemberId } = useCurrentMember()
   const { data: notifications = [] } = useNotifications()
+  const { data: todos = [] } = useTodos()
   const unreadCount = useUnreadNotificationCount()
+  const { hasPendingActions, openPendingModal } = usePendingActions()
   const markRead = useMarkNotificationRead()
   const markAllRead = useMarkAllNotificationsRead()
   const deleteNotification = useDeleteNotification()
+
+  if (hasPendingActions) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="relative"
+        aria-label="通知"
+        onClick={() => {
+          openPendingModal()
+          if (!inTodosModule) navigate('/todos')
+        }}
+      >
+        <Bell className="size-5" />
+        <Badge
+          variant="destructive"
+          className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full p-0 text-[10px]"
+        >
+          !
+        </Badge>
+      </Button>
+    )
+  }
 
   return (
     <Popover>
@@ -57,37 +90,45 @@ export default function NotificationCenter() {
           <p className="p-4 text-center text-sm text-muted-foreground">暂无通知</p>
         ) : (
           <ul className="max-h-[24rem] overflow-y-auto">
-            {notifications.map((n) => (
-              <li
-                key={n.id}
-                className={[
-                  'border-b border-border px-3 py-2.5 text-sm last:border-0',
-                  n.isRead ? 'text-muted-foreground' : 'bg-muted/50',
-                ].join(' ')}
-              >
-                {n.todoItemId ? (
-                  <Link
-                    to={`/todos/${n.todoItemId}/edit`}
-                    onClick={() => {
-                      if (!n.isRead) markRead.mutate(n.id)
-                    }}
-                    className="block hover:text-foreground"
-                  >
-                    {n.message}
-                  </Link>
-                ) : (
-                  <span>{n.message}</span>
-                )}
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="mt-1 h-auto p-0 text-xs text-muted-foreground"
-                  onClick={() => deleteNotification.mutate(n.id)}
+            {notifications.map((n) => {
+              const canDelete = isNotificationDeletable(n, todos, currentMemberId)
+
+              return (
+                <li
+                  key={n.id}
+                  className={[
+                    'border-b border-border px-3 py-2.5 text-sm last:border-0',
+                    n.isRead ? 'text-muted-foreground' : 'bg-muted/50',
+                  ].join(' ')}
                 >
-                  删除
-                </Button>
-              </li>
-            ))}
+                  {n.todoItemId ? (
+                    <Link
+                      to={`/todos/${n.todoItemId}/edit`}
+                      onClick={() => {
+                        if (!n.isRead) markRead.mutate(n.id)
+                      }}
+                      className="block hover:text-foreground"
+                    >
+                      {n.message}
+                    </Link>
+                  ) : (
+                    <span>{n.message}</span>
+                  )}
+                  {canDelete ? (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="mt-1 h-auto p-0 text-xs text-muted-foreground"
+                      onClick={() => deleteNotification.mutate(n.id)}
+                    >
+                      删除
+                    </Button>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">需先处理关联待办</p>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </PopoverContent>

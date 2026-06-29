@@ -16,6 +16,8 @@ interface UiState {
   sortOrder: SortOrder
   toggleAreaFilter: (id: string) => void
   toggleCategoryFilter: (id: string) => void
+  clearAreaFilters: () => void
+  clearCategoryFilters: () => void
   clearFilters: () => void
   setSortField: (field: SortField) => void
   setSortOrder: (order: SortOrder) => void
@@ -42,6 +44,8 @@ export const useUiStore = create<UiState>((set, get) => ({
         : [...current, id],
     })
   },
+  clearAreaFilters: () => set({ areaFilterIds: [] }),
+  clearCategoryFilters: () => set({ categoryFilterIds: [] }),
   clearFilters: () => set({ areaFilterIds: [], categoryFilterIds: [] }),
   setSortField: (field) => set({ sortField: field }),
   setSortOrder: (order) => set({ sortOrder: order }),

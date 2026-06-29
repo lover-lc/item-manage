@@ -9,6 +9,7 @@ import type {
   TodoStatusLog,
   TodoTag,
 } from '../types/todo-types'
+import { parseNegotiationSnapshot } from '../lib/negotiation-snapshot'
 
 type DbList = {
   id: string
@@ -16,6 +17,7 @@ type DbList = {
   owner_id: string
   color: string | null
   sort_order: number
+  visibility: 'private' | 'shared'
   created_at: string
 }
 
@@ -26,11 +28,15 @@ type DbItem = {
   list_id: string
   creator_id: string
   assignee_id: string
-  priority: TodoPriority
+  priority: TodoPriority | null
   start_date: string | null
   due_date: string | null
   require_feedback: boolean
   status: TodoStatus
+  awaiting_member_id: string | null
+  negotiation_snapshot: unknown | null
+  creator_agreed_at: string | null
+  assignee_agreed_at: string | null
   recurrence_rule: RecurrenceRule | null
   parent_recurrence_id: string | null
   completed_at: string | null
@@ -52,6 +58,7 @@ export function toTodoList(row: DbList): TodoList {
     ownerId: row.owner_id,
     color: row.color,
     sortOrder: row.sort_order,
+    visibility: row.visibility ?? 'private',
     createdAt: row.created_at,
   }
 }
@@ -69,6 +76,10 @@ export function toTodoItem(row: DbItem, tags: TodoTag[] = []): TodoItem {
     dueDate: row.due_date,
     requireFeedback: row.require_feedback,
     status: row.status,
+    awaitingMemberId: row.awaiting_member_id ?? null,
+    negotiationSnapshot: parseNegotiationSnapshot(row.negotiation_snapshot),
+    creatorAgreedAt: row.creator_agreed_at ?? null,
+    assigneeAgreedAt: row.assignee_agreed_at ?? null,
     recurrenceRule: row.recurrence_rule,
     parentRecurrenceId: row.parent_recurrence_id,
     completedAt: row.completed_at,
@@ -89,6 +100,61 @@ export function toTodoTag(row: DbTag): TodoTag {
 
 export function getInitialStatus(requireFeedback: boolean): TodoStatus {
   return requireFeedback ? 'pending_accept' : 'in_progress'
+}
+
+export function isTodoCheckboxChecked(status: TodoStatus): boolean {
+  return status === 'completed'
+}
+
+export type TodoCheckboxAction =
+  | 'complete'
+  | 'uncomplete'
+  | 'remind'
+  | 'verify'
+  | 'accept'
+  | 'none'
+
+export function getTodoCheckboxAction(
+  todo: Pick<
+    TodoItem,
+    'status' | 'creatorId' | 'assigneeId' | 'requireFeedback' | 'awaitingMemberId'
+  >,
+  memberId: string | null,
+): TodoCheckboxAction {
+  if (!memberId) return 'none'
+
+  const isCreator = todo.creatorId === memberId
+  const isAssignee = todo.assigneeId === memberId
+
+  if (todo.status === 'pending_review') {
+    if (isAssignee) return 'remind'
+    if (isCreator) return 'verify'
+    return 'none'
+  }
+
+  if (todo.status === 'completed') {
+    if (isAssignee && !todo.requireFeedback) return 'uncomplete'
+    return 'none'
+  }
+
+  if (todo.status === 'pending_accept') {
+    if (todo.awaitingMemberId === memberId) return 'accept'
+    return 'none'
+  }
+
+  if (
+    isAssignee &&
+    (todo.status === 'accepted' ||
+      todo.status === 'in_progress' ||
+      todo.status === 'returned')
+  ) {
+    if (todo.status === 'returned' && todo.awaitingMemberId !== memberId) {
+      return 'none'
+    }
+    return 'complete'
+  }
+
+  return 'none'
 }
 
 export function canTransition(
@@ -167,6 +233,194 @@ export async function fetchItemTags(itemIds: string[]): Promise<Map<string, Todo
   return map
 }
 
+export async function fetchTodoListPlacements(todoIds: string[]): Promise<{
+  memberLists: Map<string, string>
+  sharedLists: Map<string, string[]>
+}> {
+  const memberLists = new Map<string, string>()
+  const sharedLists = new Map<string, string[]>()
+  if (!supabase || todoIds.length === 0) {
+    return { memberLists, sharedLists }
+  }
+
+  const [memberRes, sharedRes] = await Promise.all([
+    supabase
+      .from('todo_item_member_lists')
+      .select('todo_item_id, member_id, list_id')
+      .in('todo_item_id', todoIds),
+    supabase
+      .from('todo_item_shared_lists')
+      .select('todo_item_id, list_id')
+      .in('todo_item_id', todoIds),
+  ])
+
+  if (memberRes.error) throw memberRes.error
+  if (sharedRes.error) throw sharedRes.error
+
+  for (const row of memberRes.data ?? []) {
+    const item = row as { todo_item_id: string; member_id: string; list_id: string }
+    memberLists.set(`${item.todo_item_id}:${item.member_id}`, item.list_id)
+  }
+
+  for (const row of sharedRes.data ?? []) {
+    const item = row as { todo_item_id: string; list_id: string }
+    const list = sharedLists.get(item.todo_item_id) ?? []
+    list.push(item.list_id)
+    sharedLists.set(item.todo_item_id, list)
+  }
+
+  return { memberLists, sharedLists }
+}
+
+export async function ensureMemberPrivateList(
+  todoItemId: string,
+  memberId: string,
+): Promise<string | null> {
+  if (!supabase) return null
+
+  const { data: existing, error: existingError } = await supabase
+    .from('todo_item_member_lists')
+    .select('list_id')
+    .eq('todo_item_id', todoItemId)
+    .eq('member_id', memberId)
+    .maybeSingle()
+
+  if (existingError) throw existingError
+  if (existing) return (existing as { list_id: string }).list_id
+
+  const { data: lists, error: listsError } = await supabase
+    .from('todo_lists')
+    .select('id')
+    .eq('owner_id', memberId)
+    .eq('visibility', 'private')
+    .order('sort_order', { ascending: true })
+    .limit(1)
+
+  if (listsError) throw listsError
+  if (!lists?.length) return null
+
+  const listId = (lists[0] as { id: string }).id
+  const { error: upsertError } = await supabase.from('todo_item_member_lists').upsert(
+    {
+      todo_item_id: todoItemId,
+      member_id: memberId,
+      list_id: listId,
+    },
+    { onConflict: 'todo_item_id,member_id' },
+  )
+  if (upsertError) throw upsertError
+
+  return listId
+}
+
+export async function syncMemberPrivateList(
+  todoItemId: string,
+  memberId: string,
+  privateListId: string,
+) {
+  if (!supabase) return
+
+  await supabase.from('todo_item_member_lists').upsert(
+    {
+      todo_item_id: todoItemId,
+      member_id: memberId,
+      list_id: privateListId,
+    },
+    { onConflict: 'todo_item_id,member_id' },
+  )
+}
+
+export async function syncSharedListPlacement(
+  todoItemId: string,
+  sharedListId: string | null | undefined,
+) {
+  if (!supabase) return
+
+  await supabase.from('todo_item_shared_lists').delete().eq('todo_item_id', todoItemId)
+
+  if (sharedListId) {
+    await supabase.from('todo_item_shared_lists').insert({
+      todo_item_id: todoItemId,
+      list_id: sharedListId,
+    })
+  }
+}
+
+export async function syncListSelection(
+  todoItemId: string,
+  memberId: string,
+  listId: string,
+  visibility: 'private' | 'shared',
+) {
+  if (!supabase || !listId) return
+
+  if (visibility === 'shared') {
+    await syncSharedListPlacement(todoItemId, listId)
+    await supabase
+      .from('todo_item_member_lists')
+      .delete()
+      .eq('todo_item_id', todoItemId)
+      .eq('member_id', memberId)
+  } else {
+    await syncMemberPrivateList(todoItemId, memberId, listId)
+    await syncSharedListPlacement(todoItemId, null)
+  }
+}
+
+export async function syncTodoListPlacements(
+  todoItemId: string,
+  memberId: string,
+  privateListId: string,
+  sharedListId: string | null | undefined,
+  listVisibility?: 'private' | 'shared',
+) {
+  if (sharedListId) {
+    await syncListSelection(todoItemId, memberId, sharedListId, 'shared')
+  } else if (privateListId) {
+    await syncListSelection(todoItemId, memberId, privateListId, listVisibility ?? 'private')
+  }
+}
+
+export async function markTodoNotificationsRead(todoItemId: string, memberId: string) {
+  if (!supabase) return
+  await supabase
+    .from('todo_notifications')
+    .update({ is_read: true })
+    .eq('todo_item_id', todoItemId)
+    .eq('recipient_id', memberId)
+    .eq('is_read', false)
+}
+
+export async function sendProposalNotification(
+  todoItemId: string,
+  recipientId: string,
+  editorName: string,
+  title: string,
+) {
+  if (!supabase) return
+  await supabase.from('todo_notifications').insert({
+    recipient_id: recipientId,
+    type: 'proposal_updated',
+    todo_item_id: todoItemId,
+    message: `${editorName} 修改了待办，请确认：${title}`,
+  })
+}
+
+export async function createReminderAt(
+  todoItemId: string,
+  memberId: string,
+  remindAt: string,
+) {
+  if (!supabase) return
+  if (new Date(remindAt) > new Date()) {
+    await supabase.from('todo_reminders').insert({
+      todo_item_id: todoItemId,
+      member_id: memberId,
+      remind_at: remindAt,
+    })
+  }
+}
+
 export async function createReminder(
   todoItemId: string,
   memberId: string,
@@ -180,11 +434,7 @@ export async function createReminder(
   const remindAt = new Date(due.getTime() - offsets[offset])
 
   if (remindAt > new Date()) {
-    await supabase.from('todo_reminders').insert({
-      todo_item_id: todoItemId,
-      member_id: memberId,
-      remind_at: remindAt.toISOString(),
-    })
+    await createReminderAt(todoItemId, memberId, remindAt.toISOString())
   }
 }
 

@@ -1,176 +1,27 @@
-import { ChevronRight, Plus } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Plus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import BottomSheet from '../../../shared/components/ui/BottomSheet'
+import ItemHero from '../components/ItemHero'
+import ItemFields, { type ItemFieldsCostStats } from '../components/ItemFields'
 import { useAreas, useCreateArea } from '../hooks/use-areas'
 import { useCategories, useCreateCategory } from '../hooks/use-categories'
 import { useCreateItem, useItem, useUpdateItem } from '../hooks/use-items'
 import { useCreateUnit, useUnits } from '../hooks/use-units'
+import PageHeaderBar from '../../../shared/components/PageHeaderBar'
+import {
+  dailyCost,
+  formatUnitPrice,
+  usedDays,
+} from '../lib/cost-calculator'
 import { parseISODate, toISODate } from '../../../shared/lib/date-utils'
+import { getItemStatus } from '../lib/item-status'
 import {
   parsePrice,
   parseQuantity,
   validateItemForm,
   validationErrorMessage,
 } from '../lib/validators'
-
-const fieldInputClass =
-  'w-full rounded-button border border-bg-hover bg-bg px-3 py-2 text-sm text-text outline-none focus:border-primary'
-
-const dateInputClass =
-  'rounded-button border border-bg-hover bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-primary'
-
-function FormSection({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}) {
-  return (
-    <section className="overflow-hidden rounded-card bg-bg-card">
-      <h2 className="px-4 pt-3 pb-1.5 text-sm font-medium text-text-secondary">{title}</h2>
-      <div className="divide-y divide-bg-hover">{children}</div>
-    </section>
-  )
-}
-
-function FormRow({
-  label,
-  children,
-}: {
-  label: string
-  children: ReactNode
-}) {
-  return (
-    <div className="px-4 py-2.5">
-      <label className="mb-1 block text-xs text-text-secondary">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function FormRowGrid({
-  columns = 2,
-  children,
-}: {
-  columns?: 2 | 3
-  children: ReactNode
-}) {
-  return (
-    <div
-      className={[
-        'grid divide-x divide-bg-hover',
-        columns === 3 ? 'grid-cols-3' : 'grid-cols-2',
-      ].join(' ')}
-    >
-      {children}
-    </div>
-  )
-}
-
-function FormField({
-  label,
-  children,
-  compact = false,
-}: {
-  label: string
-  children: ReactNode
-  compact?: boolean
-}) {
-  return (
-    <div className={compact ? 'px-2 py-2.5' : 'px-4 py-2.5'}>
-      <label className="mb-1 block text-xs text-text-secondary">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function DateInputRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-      <label className="shrink-0 text-sm text-text-secondary">{label}</label>
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={dateInputClass}
-      />
-    </div>
-  )
-}
-
-function ToggleRow({
-  label,
-  checked,
-  onToggle,
-}: {
-  label: string
-  checked: boolean
-  onToggle: () => void
-}) {
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5">
-      <span className="text-sm text-text">{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={onToggle}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-          checked ? 'bg-primary' : 'bg-bg-hover'
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform ${
-            checked ? 'left-[22px]' : 'left-0.5'
-          }`}
-        />
-      </button>
-    </div>
-  )
-}
-
-function PickerButton({
-  value,
-  placeholder,
-  onClick,
-  compact = false,
-}: {
-  value: string | null
-  placeholder: string
-  onClick: () => void
-  compact?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        'flex w-full min-w-0 items-center justify-between rounded-button border border-bg-hover bg-bg text-left text-sm',
-        compact ? 'gap-0.5 px-2 py-2' : 'px-3 py-2',
-      ].join(' ')}
-    >
-      <span
-        className={[
-          'truncate',
-          value ? 'text-text' : 'text-text-tertiary',
-        ].join(' ')}
-      >
-        {value ?? placeholder}
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-text-tertiary" />
-    </button>
-  )
-}
 
 function QuickAddSheet({
   open,
@@ -365,8 +216,46 @@ export default function ItemFormPage() {
     selectableCategories.find((c) => c.id === categoryId)?.name ??
     categories.find((c) => c.id === categoryId)?.name ??
     null
-  const selectedUnitName =
-    units.find((u) => u.id === unitId)?.name ?? null
+  const selectedUnitName = units.find((u) => u.id === unitId)?.name ?? null
+
+  const editStatus = useMemo(() => {
+    if (!isEdit) return undefined
+    return getItemStatus({
+      endDate: hasEndDate ? parseISODate(endDate) : null,
+      expiryDate: hasExpiryDate ? parseISODate(expiryDate) : null,
+      today: new Date(),
+    })
+  }, [isEdit, hasEndDate, endDate, hasExpiryDate, expiryDate])
+
+  const previewCostStats = useMemo((): ItemFieldsCostStats | undefined => {
+    if (!isEdit) return undefined
+    const price = parsePrice(priceText)
+    if (price === null) return undefined
+
+    const days = usedDays(
+      parseISODate(startDate),
+      hasEndDate ? parseISODate(endDate) : new Date(),
+    )
+    const quantity = parseQuantity(quantityText)
+    const hasUnitPrice =
+      quantity != null && quantity > 0 && selectedUnitName != null
+
+    return {
+      days,
+      dailyCost: dailyCost(price, days),
+      unitPrice: hasUnitPrice
+        ? formatUnitPrice(price, quantity!, selectedUnitName!)
+        : null,
+    }
+  }, [
+    isEdit,
+    priceText,
+    startDate,
+    hasEndDate,
+    endDate,
+    quantityText,
+    selectedUnitName,
+  ])
 
   const isSaving = createItem.isPending || updateItem.isPending
 
@@ -461,136 +350,63 @@ export default function ItemFormPage() {
 
   return (
     <div className="min-h-svh bg-bg pb-8">
-      <header className="sticky top-0 z-10 border-b border-bg-hover bg-bg-card px-4 py-3">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="text-sm text-primary"
-          >
-            取消
-          </button>
-          <h1 className="text-lg font-medium text-text">
-            {isEdit ? '编辑物品' : '添加物品'}
-          </h1>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="text-sm font-medium text-primary disabled:opacity-50"
-          >
-            {isSaving ? '保存中…' : '保存'}
-          </button>
-        </div>
-      </header>
+      <PageHeaderBar
+        leading={{
+          kind: 'button',
+          label: '取消',
+          onClick: () => navigate(-1),
+          variant: 'outline',
+        }}
+        title={isEdit ? '编辑' : '添加'}
+        trailing={{
+          kind: 'button',
+          label: isSaving ? '保存中…' : '保存',
+          onClick: () => void handleSave(),
+          variant: 'default',
+          disabled: isSaving,
+        }}
+      />
 
       <div className="space-y-3 px-4 py-3">
-        <FormSection title="基本信息">
-          <FormRow label="物品名称">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="物品名称"
-              className={fieldInputClass}
-            />
-          </FormRow>
-          <FormRowGrid columns={3}>
-            <FormField label="价格" compact>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={priceText}
-                onChange={(e) => setPriceText(e.target.value)}
-                placeholder="0"
-                className={fieldInputClass}
-              />
-            </FormField>
-            <FormField label="数量" compact>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={quantityText}
-                onChange={(e) => setQuantityText(e.target.value)}
-                placeholder="选填"
-                className={fieldInputClass}
-              />
-            </FormField>
-            <FormField label="单位" compact>
-              <PickerButton
-                value={selectedUnitName}
-                placeholder="选填"
-                compact
-                onClick={() => setUnitSheetOpen(true)}
-              />
-            </FormField>
-          </FormRowGrid>
-        </FormSection>
+        <ItemHero
+          mode="edit"
+          name={name}
+          onNameChange={setName}
+          status={editStatus}
+          costStats={previewCostStats}
+        />
 
-        <FormSection title="位置与分类">
-          <FormRowGrid>
-            <FormField label="区域">
-              <PickerButton
-                value={selectedAreaName}
-                placeholder="请选择"
-                onClick={() => setAreaSheetOpen(true)}
-              />
-            </FormField>
-            <FormField label="分类">
-              <PickerButton
-                value={selectedCategoryName}
-                placeholder="请选择"
-                onClick={() => setCategorySheetOpen(true)}
-              />
-            </FormField>
-          </FormRowGrid>
-          <FormRow label="具体位置">
-            <input
-              type="text"
-              value={specificLocation}
-              onChange={(e) => setSpecificLocation(e.target.value)}
-              placeholder="具体位置"
-              className={fieldInputClass}
-            />
-          </FormRow>
-        </FormSection>
-
-        <FormSection title="时间信息">
-          <DateInputRow
-            label="购入时间"
-            value={purchaseDate}
-            onChange={setPurchaseDate}
-          />
-          <DateInputRow
-            label="开始使用时间"
-            value={startDate}
-            onChange={setStartDate}
-          />
-          <ToggleRow
-            label="设置用完时间"
-            checked={hasEndDate}
-            onToggle={() => setHasEndDate((v) => !v)}
-          />
-          {hasEndDate ? (
-            <DateInputRow
-              label="用完时间"
-              value={endDate}
-              onChange={setEndDate}
-            />
-          ) : null}
-          <ToggleRow
-            label="设置过期时间"
-            checked={hasExpiryDate}
-            onToggle={() => setHasExpiryDate((v) => !v)}
-          />
-          {hasExpiryDate ? (
-            <DateInputRow
-              label="过期时间"
-              value={expiryDate}
-              onChange={setExpiryDate}
-            />
-          ) : null}
-        </FormSection>
+        <ItemFields
+          mode="edit"
+          hideNameField
+          hideStatusInGrid={editStatus != null}
+          name={name}
+          onNameChange={setName}
+          priceText={priceText}
+          onPriceChange={setPriceText}
+          quantityText={quantityText}
+          onQuantityChange={setQuantityText}
+          unitName={selectedUnitName}
+          onOpenUnitPicker={() => setUnitSheetOpen(true)}
+          areaName={selectedAreaName}
+          onOpenAreaPicker={() => setAreaSheetOpen(true)}
+          categoryName={selectedCategoryName}
+          onOpenCategoryPicker={() => setCategorySheetOpen(true)}
+          specificLocation={specificLocation}
+          onSpecificLocationChange={setSpecificLocation}
+          purchaseDate={purchaseDate}
+          onPurchaseDateChange={setPurchaseDate}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+          hasEndDate={hasEndDate}
+          onHasEndDateChange={setHasEndDate}
+          endDate={endDate}
+          onEndDateChange={setEndDate}
+          hasExpiryDate={hasExpiryDate}
+          onHasExpiryDateChange={setHasExpiryDate}
+          expiryDate={expiryDate}
+          onExpiryDateChange={setExpiryDate}
+        />
       </div>
 
       {validationError ? (
