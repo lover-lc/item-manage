@@ -109,11 +109,11 @@ export default function TodoManagePage() {
   const moveTarget = lists.find((l) => l.id !== listToDelete?.id)
 
   return (
-    <div className="flex h-full flex-col px-4 py-3">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 py-3">
       <div
         role="tablist"
         aria-label="待办管理"
-        className="mb-3 flex rounded-button bg-bg-hover p-1"
+        className="mb-3 shrink-0 flex rounded-button bg-bg-hover p-1"
       >
         {segments.map((item) => (
           <button
@@ -134,8 +134,10 @@ export default function TodoManagePage() {
         ))}
       </div>
 
-      {segment === 'lists' ? (
-        <TodoListManage
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {segment === 'lists' ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <TodoListManage
           lists={lists}
           todoCounts={todoCounts}
           isLoading={isLoading}
@@ -156,14 +158,18 @@ export default function TodoManagePage() {
               setListToDelete(list)
             }
           }}
-        />
-      ) : segment === 'members' ? (
-        <MemberManagePanel />
-      ) : segment === 'recurrence' ? (
-        <RecurrenceManagePanel />
-      ) : (
-        <ReminderManagePanel />
-      )}
+            />
+          </div>
+        ) : segment === 'members' ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <MemberManagePanel />
+          </div>
+        ) : segment === 'recurrence' ? (
+          <RecurrenceManagePanel />
+        ) : (
+          <ReminderManagePanel />
+        )}
+      </div>
 
       {listToDelete ? (
         <DeleteListDialog

@@ -10,7 +10,7 @@ import '@fontsource/plus-jakarta-sans/600.css'
 import '@fontsource/plus-jakarta-sans/700.css'
 import './index.css'
 import App from './App.tsx'
-import { initPwaUpdate } from './lib/pwa-update'
+import { initPwaUpdate } from './shared/lib/pwa-update'
 
 initPwaUpdate()
 

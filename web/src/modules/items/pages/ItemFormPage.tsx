@@ -7,6 +7,7 @@ import ItemFields, { type ItemFieldsCostStats } from '../components/ItemFields'
 import { useAreas, useCreateArea } from '../hooks/use-areas'
 import { useCategories, useCreateCategory } from '../hooks/use-categories'
 import { useCreateItem, useItem, useUpdateItem } from '../hooks/use-items'
+import { useContainers } from '../../everything/hooks/use-containers'
 import { useCreateUnit, useUnits } from '../hooks/use-units'
 import PageHeaderBar from '../../../shared/components/PageHeaderBar'
 import {
@@ -92,6 +93,7 @@ function OptionSheet({
   onClose,
   onAddNew,
   addLabel,
+  hideAddNew = false,
 }: {
   open: boolean
   title: string
@@ -101,6 +103,7 @@ function OptionSheet({
   onClose: () => void
   onAddNew: () => void
   addLabel: string
+  hideAddNew?: boolean
 }) {
   return (
     <BottomSheet open={open} onClose={onClose} title={title}>
@@ -122,19 +125,21 @@ function OptionSheet({
           </li>
         ))}
       </ul>
-      <div className="border-t border-bg-hover p-4">
-        <button
-          type="button"
-          onClick={() => {
-            onClose()
-            onAddNew()
-          }}
-          className="flex w-full items-center justify-center gap-1.5 rounded-button py-2.5 text-sm text-primary hover:bg-bg-hover"
-        >
-          <Plus className="size-4" />
-          {addLabel}
-        </button>
-      </div>
+      {!hideAddNew ? (
+        <div className="border-t border-bg-hover p-4">
+          <button
+            type="button"
+            onClick={() => {
+              onClose()
+              onAddNew()
+            }}
+            className="flex w-full items-center justify-center gap-1.5 rounded-button py-2.5 text-sm text-primary hover:bg-bg-hover"
+          >
+            <Plus className="size-4" />
+            {addLabel}
+          </button>
+        </div>
+      ) : null}
     </BottomSheet>
   )
 }
@@ -148,6 +153,7 @@ export default function ItemFormPage() {
   const { data: areas = [] } = useAreas()
   const { data: categories = [] } = useCategories()
   const { data: units = [] } = useUnits()
+  const { data: containers = [] } = useContainers()
   const createItem = useCreateItem()
   const updateItem = useUpdateItem()
   const createArea = useCreateArea()
@@ -172,6 +178,7 @@ export default function ItemFormPage() {
   const [areaId, setAreaId] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [specificLocation, setSpecificLocation] = useState('')
+  const [containerId, setContainerId] = useState<string | null>(null)
   const [purchaseDate, setPurchaseDate] = useState(todayIso)
   const [startDate, setStartDate] = useState(todayIso)
   const [hasEndDate, setHasEndDate] = useState(false)
@@ -183,6 +190,7 @@ export default function ItemFormPage() {
   const [areaSheetOpen, setAreaSheetOpen] = useState(false)
   const [categorySheetOpen, setCategorySheetOpen] = useState(false)
   const [unitSheetOpen, setUnitSheetOpen] = useState(false)
+  const [containerSheetOpen, setContainerSheetOpen] = useState(false)
   const [newAreaSheetOpen, setNewAreaSheetOpen] = useState(false)
   const [newCategorySheetOpen, setNewCategorySheetOpen] = useState(false)
   const [newUnitSheetOpen, setNewUnitSheetOpen] = useState(false)
@@ -199,6 +207,7 @@ export default function ItemFormPage() {
     setAreaId(existingItem.areaId)
     setCategoryId(existingItem.categoryId)
     setSpecificLocation(existingItem.specificLocation)
+    setContainerId(existingItem.containerId)
     setPurchaseDate(existingItem.purchaseDate)
     setStartDate(existingItem.startDate)
     setHasEndDate(existingItem.endDate != null)
@@ -217,6 +226,8 @@ export default function ItemFormPage() {
     categories.find((c) => c.id === categoryId)?.name ??
     null
   const selectedUnitName = units.find((u) => u.id === unitId)?.name ?? null
+  const selectedContainerName =
+    containers.find((c) => c.id === containerId)?.name ?? null
 
   const editStatus = useMemo(() => {
     if (!isEdit) return undefined
@@ -291,6 +302,7 @@ export default function ItemFormPage() {
       areaId,
       categoryId,
       specificLocation: specificLocation.trim(),
+      containerId,
       startDate,
       endDate: hasEndDate ? endDate : null,
       expiryDate: hasExpiryDate ? expiryDate : null,
@@ -394,6 +406,8 @@ export default function ItemFormPage() {
           onOpenCategoryPicker={() => setCategorySheetOpen(true)}
           specificLocation={specificLocation}
           onSpecificLocationChange={setSpecificLocation}
+          containerName={selectedContainerName}
+          onOpenContainerPicker={() => setContainerSheetOpen(true)}
           purchaseDate={purchaseDate}
           onPurchaseDateChange={setPurchaseDate}
           startDate={startDate}
@@ -471,6 +485,21 @@ export default function ItemFormPage() {
         onClose={() => setNewCategorySheetOpen(false)}
         onSubmit={handleAddCategory}
         isPending={createCategory.isPending}
+      />
+
+      <OptionSheet
+        open={containerSheetOpen}
+        title="选择所在容器"
+        options={[
+          { id: '', name: '未指定' },
+          ...containers.map((c) => ({ id: c.id, name: c.name })),
+        ]}
+        selectedId={containerId ?? ''}
+        onSelect={(id) => setContainerId(id || null)}
+        onClose={() => setContainerSheetOpen(false)}
+        onAddNew={() => setContainerSheetOpen(false)}
+        addLabel=""
+        hideAddNew
       />
 
       <OptionSheet

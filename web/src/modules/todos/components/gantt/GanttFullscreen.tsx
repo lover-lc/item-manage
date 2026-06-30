@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { GanttFullscreenContext } from './gantt-layout'
 import { Button } from '@/components/ui/button'
@@ -22,26 +23,51 @@ type GanttFullscreenProps = {
   className?: string
 }
 
+function supportsElementFullscreen(): boolean {
+  return typeof document !== 'undefined' && document.documentElement.requestFullscreen != null
+}
+
 const GanttFullscreen = forwardRef<GanttFullscreenHandle, GanttFullscreenProps>(
   function GanttFullscreen({ children, className }, ref) {
     const containerRef = useRef<HTMLDivElement>(null)
-    const [isFullscreen, setIsFullscreen] = useState(false)
+    const [nativeFullscreen, setNativeFullscreen] = useState(false)
+    const [pseudoFullscreen, setPseudoFullscreen] = useState(false)
+
+    const isFullscreen = nativeFullscreen || pseudoFullscreen
 
     const exit = useCallback(async () => {
       const orientation = screen.orientation as ScreenOrientation & {
         unlock?: () => void
       }
       orientation.unlock?.()
+
       if (document.fullscreenElement) {
         await document.exitFullscreen().catch(() => undefined)
       }
+
+      setPseudoFullscreen(false)
+      document.body.style.overflow = ''
     }, [])
 
     const enter = useCallback(async () => {
       const el = containerRef.current
       if (!el) return
 
-      await el.requestFullscreen?.().catch(() => undefined)
+      if (supportsElementFullscreen()) {
+        try {
+          await el.requestFullscreen()
+          const orientation = screen.orientation as ScreenOrientation & {
+            lock?: (orientation: string) => Promise<void>
+          }
+          await orientation.lock?.('landscape').catch(() => undefined)
+          return
+        } catch {
+          // Fall through to pseudo fullscreen (iOS / restricted contexts).
+        }
+      }
+
+      setPseudoFullscreen(true)
+      document.body.style.overflow = 'hidden'
 
       const orientation = screen.orientation as ScreenOrientation & {
         lock?: (orientation: string) => Promise<void>
@@ -53,20 +79,28 @@ const GanttFullscreen = forwardRef<GanttFullscreenHandle, GanttFullscreenProps>(
 
     useEffect(() => {
       function onFullscreenChange() {
-        setIsFullscreen(document.fullscreenElement === containerRef.current)
+        setNativeFullscreen(document.fullscreenElement === containerRef.current)
+        if (!document.fullscreenElement) {
+          setPseudoFullscreen(false)
+          document.body.style.overflow = ''
+        }
       }
 
       document.addEventListener('fullscreenchange', onFullscreenChange)
-      return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+      return () => {
+        document.removeEventListener('fullscreenchange', onFullscreenChange)
+        document.body.style.overflow = ''
+      }
     }, [])
 
-    return (
+    const content = (
       <div
         ref={containerRef}
         className={cn(
-          'relative flex min-h-0 flex-1 flex-col bg-card',
-          isFullscreen && 'p-2',
-          className,
+          'relative flex min-h-0 flex-col bg-card',
+          isFullscreen && !pseudoFullscreen && 'p-2',
+          pseudoFullscreen && 'fixed inset-0 z-[100] h-dvh w-dvw p-2',
+          !pseudoFullscreen && className,
         )}
         onClick={isFullscreen ? () => void exit() : undefined}
       >
@@ -88,7 +122,7 @@ const GanttFullscreen = forwardRef<GanttFullscreenHandle, GanttFullscreenProps>(
           </div>
         ) : null}
         <div
-          className="flex min-h-0 flex-1 flex-col"
+          className={cn('flex min-h-0 flex-1 flex-col', pseudoFullscreen && className)}
           onClick={isFullscreen ? (event) => event.stopPropagation() : undefined}
         >
           <GanttFullscreenContext.Provider value={isFullscreen}>
@@ -97,6 +131,12 @@ const GanttFullscreen = forwardRef<GanttFullscreenHandle, GanttFullscreenProps>(
         </div>
       </div>
     )
+
+    if (pseudoFullscreen) {
+      return createPortal(content, document.body)
+    }
+
+    return content
   },
 )
 

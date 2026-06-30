@@ -154,7 +154,6 @@ export default function ReminderManagePanel() {
   const addPreset = useTodoUiStore((s) => s.addReminderPreset)
   const updatePreset = useTodoUiStore((s) => s.updateReminderPreset)
   const removePreset = useTodoUiStore((s) => s.removeReminderPreset)
-  const movePreset = useTodoUiStore((s) => s.moveReminderPreset)
   const toggleDisabled = useTodoUiStore((s) => s.toggleReminderPresetDisabled)
   const setOrder = useTodoUiStore((s) => s.setReminderPresetOrder)
 
@@ -173,18 +172,9 @@ export default function ReminderManagePanel() {
 
   const disabledSet = useMemo(() => new Set(disabled), [disabled])
 
-  function presetDetail(preset: ReminderPreset): string {
-    if (preset.kind === 'fixed' && preset.fixedTime) {
-      return `截止当天 ${preset.fixedTime}`
-    }
-    const opt = REMINDER_OFFSET_OPTIONS.find((o) => o.minutes === preset.offsetMinutes)
-    return opt ? `截止前 ${opt.label}` : '时间间隔'
-  }
-
   const items = ordered.map((preset) => ({
     id: preset.id,
     title: preset.name,
-    subtitle: presetDetail(preset),
     builtin: preset.builtin,
     disabled: disabledSet.has(preset.id),
   }))
@@ -194,8 +184,8 @@ export default function ReminderManagePanel() {
   }
 
   return (
-    <section>
-      <div className="flex items-center justify-between">
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between">
         <h2 className="text-sm font-medium text-text-secondary">提醒预设</h2>
         <button
           type="button"
@@ -206,17 +196,14 @@ export default function ReminderManagePanel() {
           新建
         </button>
       </div>
-      <p className="mt-1 text-xs text-text-tertiary">
-        可排序、停用预设。停用后不会出现在新建待办的提醒选项中。
-      </p>
 
-      <div className="mt-3">
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
         {items.length === 0 ? (
           <p className="py-6 text-center text-sm text-text-secondary">暂无预设</p>
         ) : (
           <PresetManageList
             items={items}
-            onMove={movePreset}
+            onReorder={setOrder}
             onToggleDisabled={toggleDisabled}
             onEdit={(id) => {
               const preset = findPreset(id)

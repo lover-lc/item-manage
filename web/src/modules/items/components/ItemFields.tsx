@@ -42,6 +42,8 @@ export type ItemFieldsProps = {
   onOpenAreaPicker?: () => void
   categoryName: string | null
   onOpenCategoryPicker?: () => void
+  containerName?: string | null
+  onOpenContainerPicker?: () => void
   specificLocation: string
   onSpecificLocationChange?: (value: string) => void
   purchaseDate: string
@@ -77,6 +79,8 @@ export default function ItemFields({
   onOpenAreaPicker,
   categoryName,
   onOpenCategoryPicker,
+  containerName,
+  onOpenContainerPicker,
   specificLocation,
   onSpecificLocationChange,
   purchaseDate,
@@ -192,6 +196,19 @@ export default function ItemFields({
             )}
           </FormField>
         </FormRowGrid>
+        {onOpenContainerPicker || containerName != null ? (
+          <FormRow label="所在容器">
+            {isView ? (
+              <ReadOnlyValue value={containerName ?? null} placeholder="—" />
+            ) : (
+              <PickerButton
+                value={containerName ?? null}
+                placeholder="未指定"
+                onClick={() => onOpenContainerPicker?.()}
+              />
+            )}
+          </FormRow>
+        ) : null}
         <FormRow label="具体位置">
           {isView ? (
             <ReadOnlyValue value={specificLocation.trim() || null} placeholder="—" />

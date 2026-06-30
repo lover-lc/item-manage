@@ -1,6 +1,7 @@
 import { Package, SlidersHorizontal } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useContainer } from '../../everything/hooks/use-containers'
 import FilterSortMenu from '../components/FilterSortMenu'
 import ItemCard from '../components/ItemCard'
 import SwipeRow from '../../../shared/components/ui/SwipeRow'
@@ -99,6 +100,11 @@ function ItemRow({
 }
 
 export default function ItemsPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const containerId = searchParams.get('container')
+  const { data: container } = useContainer(containerId ?? undefined)
+
   const { data: areas = [], isLoading: areasLoading } = useAreas()
   const { data: categories = [] } = useCategories()
   const { data: allItems = [], isLoading: itemsLoading } = useItems()
@@ -114,10 +120,13 @@ export default function ItemsPage() {
   const hasActiveFilter =
     areaFilterIds.length > 0 || categoryFilterIds.length > 0
 
-  const filteredItems = useMemo(
-    () => filterItems(allItems, areaFilterIds, categoryFilterIds),
-    [allItems, areaFilterIds, categoryFilterIds],
-  )
+  const filteredItems = useMemo(() => {
+    let result = filterItems(allItems, areaFilterIds, categoryFilterIds)
+    if (containerId) {
+      result = result.filter((item) => item.containerId === containerId)
+    }
+    return result
+  }, [allItems, areaFilterIds, categoryFilterIds, containerId])
 
   const sections = useMemo(() => {
     return displayedAreas(areas, areaFilterIds, filteredItems).map((area) => ({
@@ -137,6 +146,21 @@ export default function ItemsPage() {
 
   return (
     <>
+      {containerId && container ? (
+        <div className="flex items-center gap-3 border-b border-bg-hover bg-primary/5 px-4 py-2">
+          <button
+            type="button"
+            onClick={() => navigate('/everything')}
+            className="text-sm text-primary hover:underline"
+          >
+            ← 返回3D视图
+          </button>
+          <span className="text-sm text-text-secondary">
+            正在查看：{container.name}
+          </span>
+        </div>
+      ) : null}
+
       <header className="border-b border-bg-hover bg-bg-card px-4 py-2.5">
         <FilterSortMenu
           areas={areas}

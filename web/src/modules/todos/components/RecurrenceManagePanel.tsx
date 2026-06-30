@@ -2,7 +2,6 @@ import { Plus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import {
   createCustomRecurrencePreset,
-  formatRecurrenceRuleSummary,
   getOrderedRecurrencePresets,
   mergeRecurrencePresets,
   WEEKDAY_LABELS,
@@ -178,7 +177,6 @@ export default function RecurrenceManagePanel() {
   const addPreset = useTodoUiStore((s) => s.addRecurrencePreset)
   const updatePreset = useTodoUiStore((s) => s.updateRecurrencePreset)
   const removePreset = useTodoUiStore((s) => s.removeRecurrencePreset)
-  const movePreset = useTodoUiStore((s) => s.moveRecurrencePreset)
   const toggleDisabled = useTodoUiStore((s) => s.toggleRecurrencePresetDisabled)
   const setOrder = useTodoUiStore((s) => s.setRecurrencePresetOrder)
 
@@ -200,7 +198,6 @@ export default function RecurrenceManagePanel() {
   const items = ordered.map((preset) => ({
     id: preset.id,
     title: preset.name,
-    subtitle: preset.rule ? formatRecurrenceRuleSummary({ ...preset.rule, endType: 'never' }) : '不重复',
     builtin: preset.builtin,
     disabled: disabledSet.has(preset.id),
   }))
@@ -210,8 +207,8 @@ export default function RecurrenceManagePanel() {
   }
 
   return (
-    <section>
-      <div className="flex items-center justify-between">
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between">
         <h2 className="text-sm font-medium text-text-secondary">重复预设</h2>
         <button
           type="button"
@@ -222,14 +219,11 @@ export default function RecurrenceManagePanel() {
           新建
         </button>
       </div>
-      <p className="mt-1 text-xs text-text-tertiary">
-        可排序、停用预设。停用后不会出现在新建待办的重复选项中。
-      </p>
 
-      <div className="mt-3">
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
         <PresetManageList
           items={items}
-          onMove={movePreset}
+          onReorder={setOrder}
           onToggleDisabled={toggleDisabled}
           onEdit={(id) => {
             const preset = findPreset(id)

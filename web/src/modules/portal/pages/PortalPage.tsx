@@ -1,6 +1,6 @@
 import NotificationCenter from '../../todos/components/NotificationCenter'
 import { usePortalStats } from '../../todos/hooks/use-todos'
-import { Package, CheckSquare, Settings } from 'lucide-react'
+import { Package, CheckSquare, Settings, Box } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import AppCard, { PortalAppGrid } from '../components/AppCard'
 import MemberSwitcher from '../components/MemberSwitcher'
@@ -49,6 +49,18 @@ export default function PortalPage() {
             stats={[
               { label: '进行中', value: stats?.activeTodos ?? '—' },
               { label: '今日到期', value: stats?.dueToday ?? '—' },
+            ]}
+          />
+
+          <AppCard
+            title="空间管理"
+            description="3D虚拟家居导览"
+            to="/everything"
+            accentColor="#10B981"
+            icon={<Box className="size-6" />}
+            stats={[
+              { label: '容器总数', value: '—' },
+              { label: '物品分布', value: '—' },
             ]}
           />
         </PortalAppGrid>

@@ -16,6 +16,7 @@ import TodoTabLayout from './modules/todos/components/layout/TodoTabLayout'
 import TodoModuleLayout from './modules/todos/components/layout/TodoModuleLayout'
 import { PendingActionsProvider } from './modules/todos/context/pending-actions-context'
 import NotificationToast from './modules/todos/components/NotificationToast'
+import PwaUpdateOverlay from './shared/components/PwaUpdateOverlay'
 import { useSeedDefaultTodoList } from './modules/todos/hooks/use-seed-todo'
 import { useRealtimeTodos } from './shared/hooks/use-realtime'
 import RequireAuth from './shared/components/RequireAuth'
@@ -23,6 +24,8 @@ import RequireMember from './shared/components/RequireMember'
 import ThemeShell from './shared/components/ThemeShell'
 import { AuthProvider } from './shared/hooks/use-auth'
 import LoginPage from './shared/pages/LoginPage'
+import SceneViewPage from './modules/everything/pages/SceneViewPage'
+import SetupPage from './modules/everything/pages/SetupPage'
 
 const queryClient = new QueryClient()
 
@@ -34,6 +37,7 @@ function SeedLayout() {
     <PendingActionsProvider>
       <Outlet />
       <NotificationToast />
+      <PwaUpdateOverlay />
     </PendingActionsProvider>
   )
 }
@@ -58,6 +62,11 @@ function AppRoutes() {
                 <Route path="search" element={<SearchPage />} />
                 <Route path="manage" element={<ManagePage />} />
               </Route>
+            </Route>
+
+            <Route path="/everything">
+              <Route index element={<SceneViewPage />} />
+              <Route path="setup" element={<SetupPage />} />
             </Route>
 
             <Route path="/todos" element={<TodoModuleLayout />}>

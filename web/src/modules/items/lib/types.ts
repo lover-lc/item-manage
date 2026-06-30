@@ -31,6 +31,7 @@ export type DbItem = {
   area_id: string
   category_id: string
   unit_id: string | null
+  container_id: string | null
   specific_location: string
   created_at: string
   updated_at: string
@@ -75,6 +76,7 @@ export type Item = {
   areaId: string
   categoryId: string
   unitId: string | null
+  containerId: string | null
   specificLocation: string
   createdAt: string
   updatedAt: string
@@ -144,6 +146,7 @@ export function toItem(row: DbItemRow): Item {
     areaId: row.area_id,
     categoryId: row.category_id,
     unitId: row.unit_id,
+    containerId: row.container_id ?? null,
     specificLocation: row.specific_location,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -179,6 +182,7 @@ export function toDbItem(
   if (item.categoryId !== undefined) row.category_id = item.categoryId
   if (item.quantity !== undefined) row.quantity = item.quantity
   if (item.unitId !== undefined) row.unit_id = item.unitId
+  if (item.containerId !== undefined) row.container_id = item.containerId
   if (item.specificLocation !== undefined) {
     row.specific_location = item.specificLocation
   }
