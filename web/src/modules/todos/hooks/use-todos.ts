@@ -976,7 +976,7 @@ export function useTodoStatusLogs(todoItemId: string | undefined) {
   })
 }
 
-export function useTodoStatusReasons(todos: { id: string; status: string }[]) {
+export function useTodoStatusReasons(todos: { id: string; status: TodoStatus }[]) {
   const todoIds = todos
     .filter((t) => t.status === 'rejected' || t.status === 'returned')
     .map((t) => t.id)

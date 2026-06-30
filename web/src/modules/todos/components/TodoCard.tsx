@@ -34,7 +34,7 @@ export default function TodoCard({
 }: TodoCardProps) {
   const isChecked = isTodoCheckboxChecked(todo.status)
   const isPendingReview = todo.status === 'pending_review'
-  const isRejectedOrReturned = isReasonStatus(todo.status)
+  const reasonStatus = isReasonStatus(todo.status) ? todo.status : null
   const isCompleted = todo.status === 'completed'
   const isOverdue =
     !isChecked &&
@@ -48,7 +48,7 @@ export default function TodoCard({
       className={cn(
         'flex items-center gap-3 px-4 py-2.5',
         isPendingReview && 'bg-purple-50 dark:bg-purple-950/25',
-        isRejectedOrReturned && 'bg-orange-50/70 dark:bg-orange-950/20',
+        reasonStatus && 'bg-orange-50/70 dark:bg-orange-950/20',
         todo.status === 'rejected' && 'bg-red-50/70 dark:bg-red-950/20',
       )}
     >
@@ -101,9 +101,9 @@ export default function TodoCard({
                 待验收
               </p>
             ) : null}
-            {statusReason && isRejectedOrReturned ? (
+            {statusReason && reasonStatus ? (
               <TodoStatusReasonBanner
-                status={todo.status}
+                status={reasonStatus}
                 reasonText={statusReason}
                 compact
                 className="mt-0.5 line-clamp-2"

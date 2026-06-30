@@ -81,7 +81,7 @@ const GanttChart = forwardRef<GanttChartHandle, GanttChartProps>(function GanttC
     const inView = isValidGanttRange(displayRange)
       ? filtered.filter((todo) => todoIntersectsDisplay(todo, displayRange))
       : filtered
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...inView].sort((a, b) => {
       const aDone = a.status === 'completed' ? 1 : 0
       const bDone = b.status === 'completed' ? 1 : 0
       if (aDone !== bDone) return aDone - bDone
