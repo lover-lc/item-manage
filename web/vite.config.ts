@@ -33,7 +33,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null,
-      includeAssets: ['icons/*.svg', 'favicon.svg'],
+      includeAssets: ['icons/*.png', 'icons/*.svg', 'favicon.svg'],
       manifest: {
         id: '/one-piece/',
         name: '物品整理',
@@ -44,6 +44,16 @@ export default defineConfig({
         start_url: '/one-piece/',
         scope: '/one-piece/',
         icons: [
+          {
+            src: 'icons/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
           {
             src: 'icons/icon-192.svg',
             sizes: '192x192',
