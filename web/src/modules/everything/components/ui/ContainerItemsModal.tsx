@@ -15,19 +15,20 @@ export default function ContainerItemsModal() {
   const { data: areas = [] } = useAreas()
 
   if (!showModal || !container) return null
-  const areaName = areas.find((a) => a.id === container.areaId)?.name ?? null
+  const activeContainer = container
+  const areaName = areas.find((a) => a.id === activeContainer.areaId)?.name ?? null
 
   function handleAddItem() {
     const params = new URLSearchParams()
-    if (container.areaId) params.set('areaId', container.areaId)
-    params.set('containerId', container.id)
+    if (activeContainer.areaId) params.set('areaId', activeContainer.areaId)
+    params.set('containerId', activeContainer.id)
     closeContainerModal()
     navigate(`/items/new?${params.toString()}`)
   }
 
   function handleViewAll() {
     closeContainerModal()
-    navigate(`/items?container=${container.id}`)
+    navigate(`/items?container=${activeContainer.id}`)
   }
 
   const handleClose = () => {
@@ -45,7 +46,7 @@ export default function ContainerItemsModal() {
       >
         <div className="flex items-center justify-between border-b border-bg-hover px-4 py-3">
           <h2 className="text-lg font-semibold text-text">
-            📦 {areaName ? `${areaName} - ` : ''}{container.name}
+            📦 {areaName ? `${areaName} - ` : ''}{activeContainer.name}
           </h2>
           <button
             onClick={handleClose}

@@ -26,7 +26,7 @@ export default function SceneCanvas() {
   function handleCanvasCreated(state: RootState) {
     state.gl.setClearColor(ROOM_WALL_COLOR)
     const canvas = state.gl.domElement
-    canvas.style.webkitTouchCallout = 'none'
+    canvas.style.setProperty('-webkit-touch-callout', 'none')
     canvas.addEventListener('contextmenu', (e) => e.preventDefault())
     onCreated()
   }

@@ -176,7 +176,7 @@ export default function ItemFields({
               <ReadOnlyValue value={containerName ?? null} placeholder="—" />
             ) : (
               <PickerButton
-                value={containerName}
+                value={containerName ?? null}
                 placeholder={containerPickerDisabled ? '请先选择区域' : '未指定'}
                 disabled={containerPickerDisabled}
                 onClick={() => onOpenContainerPicker?.()}

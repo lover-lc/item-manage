@@ -45,11 +45,11 @@ interface SceneState {
   showModelSelectionModal: boolean
   setShowModelSelectionModal: (show: boolean) => void
 
-  containerGroupRefs: Record<string, RefObject<Group>>
-  setContainerGroupRef: (id: string, ref: RefObject<Group>) => void
+  containerGroupRefs: Record<string, RefObject<Group | null>>
+  setContainerGroupRef: (id: string, ref: RefObject<Group | null>) => void
 
-  containerModelRootRefs: Record<string, RefObject<Group>>
-  setContainerModelRootRef: (id: string, ref: RefObject<Group>) => void
+  containerModelRootRefs: Record<string, RefObject<Group | null>>
+  setContainerModelRootRef: (id: string, ref: RefObject<Group | null>) => void
 
   draggingContainerId: string | null
   setDraggingContainerId: (id: string | null) => void

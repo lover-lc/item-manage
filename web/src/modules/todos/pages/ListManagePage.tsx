@@ -5,6 +5,7 @@ import TodoListManage from '../components/TodoListManage'
 import {
   useCreateTodoList,
   useDeleteTodoList,
+  useReorderTodoLists,
   useTodoLists,
   useTodos,
   useUpdateTodoList,
@@ -81,6 +82,7 @@ export default function ListManagePage() {
   const createList = useCreateTodoList()
   const updateList = useUpdateTodoList()
   const deleteList = useDeleteTodoList()
+  const reorderLists = useReorderTodoLists()
   const [listToDelete, setListToDelete] = useState<TodoList | null>(null)
 
   const todoCounts = useMemo(() => {
@@ -110,11 +112,11 @@ export default function ListManagePage() {
         lists={lists}
         todoCounts={todoCounts}
         isLoading={isLoading}
-        onAdd={async (name) => {
-          await createList.mutateAsync({ name })
+        onAdd={async (name, color) => {
+          await createList.mutateAsync({ name, visibility: 'private', color })
         }}
-        onRename={async (id, name) => {
-          await updateList.mutateAsync({ id, name })
+        onRename={async (id, name, color) => {
+          await updateList.mutateAsync({ id, name, color })
         }}
         onDeleteRequest={(list) => {
           const count = todoCounts[list.id] ?? 0
@@ -123,6 +125,12 @@ export default function ListManagePage() {
           } else {
             setListToDelete(list)
           }
+        }}
+        onReorderPrivate={(orderedIds) => {
+          reorderLists.mutate({ visibility: 'private', orderedIds })
+        }}
+        onReorderShared={(orderedIds) => {
+          reorderLists.mutate({ visibility: 'shared', orderedIds })
         }}
       />
 
