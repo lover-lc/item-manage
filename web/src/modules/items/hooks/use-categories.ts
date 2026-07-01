@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toCategory, type Category, type DbCategory } from '../lib/types'
+import {
+  nextEntitySortOrder,
+  persistEntitySortOrder,
+} from '../../../shared/lib/entity-sort-order'
 import { supabase } from '../../../shared/lib/supabase'
+import { toCategory, type Category, type DbCategory } from '../lib/types'
 
 export function useCategories() {
   return useQuery({
@@ -12,7 +16,8 @@ export function useCategories() {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .order('name')
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
 
       if (error) throw error
       return (data as DbCategory[]).map(toCategory)
@@ -30,11 +35,14 @@ export function useCreateCategory() {
         throw new Error('未配置 Supabase')
       }
 
+      const sortOrder = await nextEntitySortOrder(supabase, 'categories')
+
       const { data, error } = await supabase
         .from('categories')
         .insert({
           name: input.name,
           is_system_reserved: input.isSystemReserved ?? false,
+          sort_order: sortOrder,
         })
         .select()
         .single()
@@ -66,6 +74,20 @@ export function useUpdateCategory() {
 
       if (error) throw error
       return toCategory(data as DbCategory)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    },
+  })
+}
+
+export function useReorderCategories() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      if (!supabase) throw new Error('未配置 Supabase')
+      await persistEntitySortOrder(supabase, 'categories', orderedIds)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })

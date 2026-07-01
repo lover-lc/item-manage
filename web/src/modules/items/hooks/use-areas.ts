@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toArea, type Area, type DbArea } from '../lib/types'
+import {
+  nextEntitySortOrder,
+  persistEntitySortOrder,
+} from '../../../shared/lib/entity-sort-order'
 import { supabase } from '../../../shared/lib/supabase'
+import { toArea, type Area, type DbArea } from '../lib/types'
 
 export function useAreas() {
   return useQuery({
@@ -12,7 +16,8 @@ export function useAreas() {
       const { data, error } = await supabase
         .from('areas')
         .select('*')
-        .order('name')
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
 
       if (error) throw error
       return (data as DbArea[]).map(toArea)
@@ -30,11 +35,14 @@ export function useCreateArea() {
         throw new Error('未配置 Supabase')
       }
 
+      const sortOrder = await nextEntitySortOrder(supabase, 'areas')
+
       const { data, error } = await supabase
         .from('areas')
         .insert({
           name: input.name,
           is_system_reserved: input.isSystemReserved ?? false,
+          sort_order: sortOrder,
         })
         .select()
         .single()
@@ -66,6 +74,20 @@ export function useUpdateArea() {
 
       if (error) throw error
       return toArea(data as DbArea)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['areas'] })
+    },
+  })
+}
+
+export function useReorderAreas() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      if (!supabase) throw new Error('未配置 Supabase')
+      await persistEntitySortOrder(supabase, 'areas', orderedIds)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas'] })

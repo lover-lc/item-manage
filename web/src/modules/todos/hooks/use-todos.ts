@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../shared/hooks/use-auth'
 import { useCurrentMember } from '../../../shared/hooks/use-current-member'
+import { persistEntitySortOrder } from '../../../shared/lib/entity-sort-order'
 import { supabase } from '../../../shared/lib/supabase'
 import { isoToLocalDate } from '../../../shared/lib/datetime-utils'
 import {
@@ -110,12 +111,18 @@ export function useCreateTodoList() {
       if (!supabase || !currentMemberId) throw new Error('未选择成员')
 
       const visibility = input.visibility ?? 'private'
-      const { data: existing } = await supabase
+      let maxOrderQuery = supabase
         .from('todo_lists')
         .select('sort_order')
-        .or(`owner_id.eq.${currentMemberId},visibility.eq.shared`)
+        .eq('visibility', visibility)
         .order('sort_order', { ascending: false })
         .limit(1)
+
+      if (visibility === 'private') {
+        maxOrderQuery = maxOrderQuery.eq('owner_id', currentMemberId)
+      }
+
+      const { data: existing } = await maxOrderQuery
 
       const nextOrder =
         existing && existing.length > 0
@@ -169,6 +176,23 @@ export function useUpdateTodoList() {
 
       if (error) throw error
       return toTodoList(data as DbList)
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['todo-lists'] })
+    },
+  })
+}
+
+export function useReorderTodoLists() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: {
+      visibility: 'private' | 'shared'
+      orderedIds: string[]
+    }) => {
+      if (!supabase) throw new Error('未配置 Supabase')
+      await persistEntitySortOrder(supabase, 'todo_lists', input.orderedIds)
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['todo-lists'] })

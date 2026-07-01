@@ -26,6 +26,7 @@ import { AuthProvider } from './shared/hooks/use-auth'
 import LoginPage from './shared/pages/LoginPage'
 import SceneViewPage from './modules/everything/pages/SceneViewPage'
 import SetupPage from './modules/everything/pages/SetupPage'
+import EverythingLayout from './modules/everything/pages/EverythingLayout'
 
 const queryClient = new QueryClient()
 
@@ -64,7 +65,7 @@ function AppRoutes() {
               </Route>
             </Route>
 
-            <Route path="/everything">
+            <Route path="/everything" element={<EverythingLayout />}>
               <Route index element={<SceneViewPage />} />
               <Route path="setup" element={<SetupPage />} />
             </Route>

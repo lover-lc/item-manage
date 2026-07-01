@@ -1,7 +1,12 @@
+/** Plan-view vertex [planX, planY], bottom-left origin, room 20×20m */
+export type AreaVertex = [number, number]
+
 export type DbArea = {
   id: string
   name: string
   is_system_reserved: boolean
+  sort_order: number
+  vertices: AreaVertex[] | null
   created_at: string
 }
 
@@ -9,6 +14,7 @@ export type DbCategory = {
   id: string
   name: string
   is_system_reserved: boolean
+  sort_order: number
   created_at: string
 }
 
@@ -16,6 +22,8 @@ export type DbUnit = {
   id: string
   name: string
   is_system_reserved: boolean
+  is_disabled: boolean
+  sort_order: number
   created_at: string
 }
 
@@ -25,7 +33,7 @@ export type DbItem = {
   purchase_price: number | string
   purchase_date: string
   quantity: number | string | null
-  start_date: string
+  start_date: string | null
   end_date: string | null
   expiry_date: string | null
   area_id: string
@@ -47,6 +55,8 @@ export type Area = {
   id: string
   name: string
   isSystemReserved: boolean
+  sortOrder: number
+  vertices: AreaVertex[] | null
   createdAt: string
 }
 
@@ -54,6 +64,7 @@ export type Category = {
   id: string
   name: string
   isSystemReserved: boolean
+  sortOrder: number
   createdAt: string
 }
 
@@ -61,6 +72,8 @@ export type Unit = {
   id: string
   name: string
   isSystemReserved: boolean
+  isDisabled: boolean
+  sortOrder: number
   createdAt: string
 }
 
@@ -70,7 +83,7 @@ export type Item = {
   purchasePrice: number
   purchaseDate: string
   quantity: number | null
-  startDate: string
+  startDate: string | null
   endDate: string | null
   expiryDate: string | null
   areaId: string
@@ -101,8 +114,23 @@ export function toArea(row: DbArea): Area {
     id: row.id,
     name: row.name,
     isSystemReserved: row.is_system_reserved,
+    sortOrder: row.sort_order ?? 0,
+    vertices: normalizeAreaVertices(row.vertices),
     createdAt: row.created_at,
   }
+}
+
+function normalizeAreaVertices(raw: unknown): AreaVertex[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  const vertices: AreaVertex[] = []
+  for (const point of raw) {
+    if (!Array.isArray(point) || point.length < 2) return null
+    const x = Number(point[0])
+    const y = Number(point[1])
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+    vertices.push([x, y])
+  }
+  return vertices.length >= 3 ? vertices : null
 }
 
 export function toCategory(row: DbCategory): Category {
@@ -110,6 +138,7 @@ export function toCategory(row: DbCategory): Category {
     id: row.id,
     name: row.name,
     isSystemReserved: row.is_system_reserved,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at,
   }
 }
@@ -119,6 +148,8 @@ export function toUnit(row: DbUnit): Unit {
     id: row.id,
     name: row.name,
     isSystemReserved: row.is_system_reserved,
+    isDisabled: row.is_disabled ?? false,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at,
   }
 }

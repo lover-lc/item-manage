@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import ItemHero from '../components/ItemHero'
 import ItemFields, { buildCostStats } from '../components/ItemFields'
 import { useDeleteItem, useItem, useUpdateItem } from '../hooks/use-items'
+import { useContainer } from '../../everything/hooks/use-containers'
 import PageHeaderBar from '../../../shared/components/PageHeaderBar'
 import { parseISODate, toISODate } from '../../../shared/lib/date-utils'
 import { getItemStatus } from '../lib/item-status'
@@ -61,6 +62,7 @@ export default function ItemDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { data: item, isLoading } = useItem(id)
+  const { data: container } = useContainer(item?.containerId ?? undefined)
   const updateItem = useUpdateItem()
   const deleteItem = useDeleteItem()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -164,13 +166,11 @@ export default function ItemDetailPage() {
           unitName={item.unit?.name ?? null}
           areaName={item.area?.name ?? null}
           categoryName={item.category?.name ?? null}
-          specificLocation={item.specificLocation}
+          containerName={container?.name ?? null}
           purchaseDate={item.purchaseDate}
           startDate={item.startDate}
-          hasEndDate={item.endDate != null}
-          endDate={item.endDate ?? ''}
-          hasExpiryDate={item.expiryDate != null}
-          expiryDate={item.expiryDate ?? ''}
+          endDate={item.endDate}
+          expiryDate={item.expiryDate}
         />
 
         <div className="space-y-2 pt-3">

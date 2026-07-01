@@ -16,7 +16,6 @@ import {
   PickerButton,
   ReadOnlyDateRow,
   ReadOnlyValue,
-  ToggleRow,
 } from './item-form-layout'
 
 export type ItemFieldsMode = 'view' | 'edit'
@@ -44,23 +43,16 @@ export type ItemFieldsProps = {
   onOpenCategoryPicker?: () => void
   containerName?: string | null
   onOpenContainerPicker?: () => void
-  specificLocation: string
-  onSpecificLocationChange?: (value: string) => void
-  purchaseDate: string
-  onPurchaseDateChange?: (value: string) => void
-  startDate: string
-  onStartDateChange?: (value: string) => void
-  hasEndDate: boolean
-  onHasEndDateChange?: (value: boolean) => void
-  endDate: string
-  onEndDateChange?: (value: string) => void
-  hasExpiryDate: boolean
-  onHasExpiryDateChange?: (value: boolean) => void
-  expiryDate: string
-  onExpiryDateChange?: (value: string) => void
-  /** Hide name row when shown in hero card above. */
+  containerPickerDisabled?: boolean
+  purchaseDate: string | null
+  onPurchaseDateChange?: (value: string | null) => void
+  startDate: string | null
+  onStartDateChange?: (value: string | null) => void
+  endDate: string | null
+  onEndDateChange?: (value: string | null) => void
+  expiryDate: string | null
+  onExpiryDateChange?: (value: string | null) => void
   hideNameField?: boolean
-  /** Hide status column when shown in hero card above. */
   hideStatusInGrid?: boolean
 }
 
@@ -81,18 +73,13 @@ export default function ItemFields({
   onOpenCategoryPicker,
   containerName,
   onOpenContainerPicker,
-  specificLocation,
-  onSpecificLocationChange,
+  containerPickerDisabled = false,
   purchaseDate,
   onPurchaseDateChange,
   startDate,
   onStartDateChange,
-  hasEndDate,
-  onHasEndDateChange,
   endDate,
   onEndDateChange,
-  hasExpiryDate,
-  onHasExpiryDateChange,
   expiryDate,
   onExpiryDateChange,
   hideNameField = false,
@@ -172,53 +159,39 @@ export default function ItemFields({
       </FormSection>
 
       <FormSection>
-        <FormRowGrid>
-          <FormField label="区域">
-            {isView ? (
-              <ReadOnlyValue value={areaName} placeholder="—" />
-            ) : (
-              <PickerButton
-                value={areaName}
-                placeholder="请选择"
-                onClick={() => onOpenAreaPicker?.()}
-              />
-            )}
-          </FormField>
-          <FormField label="分类">
-            {isView ? (
-              <ReadOnlyValue value={categoryName} placeholder="—" />
-            ) : (
-              <PickerButton
-                value={categoryName}
-                placeholder="请选择"
-                onClick={() => onOpenCategoryPicker?.()}
-              />
-            )}
-          </FormField>
-        </FormRowGrid>
+        <FormRow label="区域">
+          {isView ? (
+            <ReadOnlyValue value={areaName} placeholder="—" />
+          ) : (
+            <PickerButton
+              value={areaName}
+              placeholder="请选择"
+              onClick={() => onOpenAreaPicker?.()}
+            />
+          )}
+        </FormRow>
         {onOpenContainerPicker || containerName != null ? (
           <FormRow label="所在容器">
             {isView ? (
               <ReadOnlyValue value={containerName ?? null} placeholder="—" />
             ) : (
               <PickerButton
-                value={containerName ?? null}
-                placeholder="未指定"
+                value={containerName}
+                placeholder={containerPickerDisabled ? '请先选择区域' : '未指定'}
+                disabled={containerPickerDisabled}
                 onClick={() => onOpenContainerPicker?.()}
               />
             )}
           </FormRow>
         ) : null}
-        <FormRow label="具体位置">
+        <FormRow label="分类">
           {isView ? (
-            <ReadOnlyValue value={specificLocation.trim() || null} placeholder="—" />
+            <ReadOnlyValue value={categoryName} placeholder="—" />
           ) : (
-            <input
-              type="text"
-              value={specificLocation}
-              onChange={(e) => onSpecificLocationChange?.(e.target.value)}
-              placeholder="具体位置"
-              className={fieldInputClass}
+            <PickerButton
+              value={categoryName}
+              placeholder="请选择"
+              onClick={() => onOpenCategoryPicker?.()}
             />
           )}
         </FormRow>
@@ -227,51 +200,37 @@ export default function ItemFields({
       <FormSection>
         {isView ? (
           <>
-            <ReadOnlyDateRow label="购入时间" value={purchaseDate} />
-            <ReadOnlyDateRow label="开始使用时间" value={startDate} />
-            {hasEndDate ? (
-              <ReadOnlyDateRow label="用完时间" value={endDate} />
+            <ReadOnlyDateRow label="购入日期" value={purchaseDate} />
+            <ReadOnlyDateRow label="开始日期" value={startDate} />
+            {endDate ? (
+              <ReadOnlyDateRow label="用完日期" value={endDate} />
             ) : null}
-            {hasExpiryDate ? (
-              <ReadOnlyDateRow label="过期时间" value={expiryDate} />
+            {expiryDate ? (
+              <ReadOnlyDateRow label="过期日期" value={expiryDate} />
             ) : null}
           </>
         ) : (
           <>
             <DateInputRow
-              label="购入时间"
+              label="购入日期"
               value={purchaseDate}
               onChange={(value) => onPurchaseDateChange?.(value)}
             />
             <DateInputRow
-              label="开始使用时间"
+              label="开始日期"
               value={startDate}
               onChange={(value) => onStartDateChange?.(value)}
             />
-            <ToggleRow
-              label="设置用完时间"
-              checked={hasEndDate}
-              onToggle={() => onHasEndDateChange?.(!hasEndDate)}
+            <DateInputRow
+              label="用完日期"
+              value={endDate}
+              onChange={(value) => onEndDateChange?.(value)}
             />
-            {hasEndDate ? (
-              <DateInputRow
-                label="用完时间"
-                value={endDate}
-                onChange={(value) => onEndDateChange?.(value)}
-              />
-            ) : null}
-            <ToggleRow
-              label="设置过期时间"
-              checked={hasExpiryDate}
-              onToggle={() => onHasExpiryDateChange?.(!hasExpiryDate)}
+            <DateInputRow
+              label="过期日期"
+              value={expiryDate}
+              onChange={(value) => onExpiryDateChange?.(value)}
             />
-            {hasExpiryDate ? (
-              <DateInputRow
-                label="过期时间"
-                value={expiryDate}
-                onChange={(value) => onExpiryDateChange?.(value)}
-              />
-            ) : null}
           </>
         )}
       </FormSection>

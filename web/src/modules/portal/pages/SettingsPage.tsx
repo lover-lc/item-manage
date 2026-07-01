@@ -1,21 +1,11 @@
-import { ArrowLeft, Bell, BellOff, LogOut } from 'lucide-react'
+import { ArrowLeft, Bell, BellOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import BackToHomeButton from '../../../shared/components/BackToHomeButton'
-import { useAuth } from '../../../shared/hooks/use-auth'
-import { useMemberStore } from '../../../shared/store/member-store'
 import { usePushSubscription } from '../../todos/hooks/use-push-subscription'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { signOut } = useAuth()
-  const setCurrentMemberId = useMemberStore((s) => s.setCurrentMemberId)
   const { isSupported, permission, subscribe, unsubscribe } = usePushSubscription()
-
-  async function handleSignOut() {
-    setCurrentMemberId(null)
-    await signOut()
-    navigate('/login', { replace: true })
-  }
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -82,17 +72,6 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
-        </section>
-
-        <section>
-          <button
-            type="button"
-            onClick={() => void handleSignOut()}
-            className="flex w-full items-center justify-center gap-2 rounded-button border border-bg-hover py-2.5 text-sm text-status-expired"
-          >
-            <LogOut className="size-4" />
-            退出登录
-          </button>
         </section>
 
         <div className="flex justify-center pt-2">

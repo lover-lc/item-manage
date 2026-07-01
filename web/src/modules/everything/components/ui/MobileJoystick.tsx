@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { shouldUseJoystick } from '../../lib/scene-controls'
+import { useRef, useState } from 'react'
+import { useTouchPrimaryDevice } from '../../hooks/use-touch-primary-device'
 import { useSceneStore } from '../../store/scene-store'
+import type { JoystickTarget } from '../../lib/scene-controls'
 
 const KNOB_RADIUS = 28
 const BASE_RADIUS = 56
@@ -8,19 +9,15 @@ const MAX_OFFSET = BASE_RADIUS - KNOB_RADIUS
 
 export default function MobileJoystick() {
   const setJoystickInput = useSceneStore((s) => s.setJoystickInput)
-  const [enabled, setEnabled] = useState(false)
+  const isEditMode = useSceneStore((s) => s.isEditMode)
+  const selectedObjectId = useSceneStore((s) => s.selectedObjectId)
+  const joystickTarget = useSceneStore((s) => s.joystickTarget)
+  const setJoystickTarget = useSceneStore((s) => s.setJoystickTarget)
+  const isTouchPrimary = useTouchPrimaryDevice()
   const baseRef = useRef<HTMLDivElement>(null)
   const activePointerId = useRef<number | null>(null)
   const centerRef = useRef({ x: 0, y: 0 })
   const [knobOffset, setKnobOffset] = useState({ x: 0, y: 0 })
-
-  useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse)')
-    const update = () => setEnabled(shouldUseJoystick(mq.matches))
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
 
   function resetJoystick() {
     activePointerId.current = null
@@ -29,7 +26,7 @@ export default function MobileJoystick() {
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!enabled || activePointerId.current !== null) return
+    if (!isTouchPrimary || activePointerId.current !== null) return
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
     activePointerId.current = e.pointerId
@@ -72,10 +69,48 @@ export default function MobileJoystick() {
     resetJoystick()
   }
 
-  if (!enabled) return null
+  function handleTargetChange(target: JoystickTarget) {
+    if (target === 'container' && !selectedObjectId) return
+    setJoystickTarget(target)
+    resetJoystick()
+    useSceneStore.getState().setHeightInput(0)
+  }
+
+  const canSwitchTarget = isEditMode && Boolean(selectedObjectId)
+
+  if (!isTouchPrimary) return null
 
   return (
-    <div className="pointer-events-none fixed bottom-6 left-6 z-40">
+    <div className="pointer-events-none fixed bottom-6 left-6 z-40 flex flex-col items-center gap-2" data-scene-ui>
+      {canSwitchTarget ? (
+        <div className="pointer-events-auto flex rounded-full border border-white/20 bg-black/50 p-0.5 text-xs text-white backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="操作镜头"
+            aria-pressed={joystickTarget === 'camera'}
+            onClick={() => handleTargetChange('camera')}
+            className={[
+              'rounded-full px-3 py-1',
+              joystickTarget === 'camera' ? 'bg-white/25' : 'text-white/70',
+            ].join(' ')}
+          >
+            镜头
+          </button>
+          <button
+            type="button"
+            aria-label="操作容器"
+            aria-pressed={joystickTarget === 'container'}
+            onClick={() => handleTargetChange('container')}
+            className={[
+              'rounded-full px-3 py-1',
+              joystickTarget === 'container' ? 'bg-white/25' : 'text-white/70',
+            ].join(' ')}
+          >
+            容器
+          </button>
+        </div>
+      ) : null}
+
       <div
         ref={baseRef}
         className="pointer-events-auto relative touch-none"

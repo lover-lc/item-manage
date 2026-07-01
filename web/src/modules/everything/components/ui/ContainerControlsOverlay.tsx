@@ -1,49 +1,43 @@
 import { useEffect, useRef, useState } from 'react'
-import { Html } from '@react-three/drei'
-import { useThree, useFrame } from '@react-three/fiber'
 import { useSceneStore } from '../../store/scene-store'
-import { getScreenPosition } from '../../lib/projection-utils'
+import {
+  OVERLAY_EDGE_MARGIN,
+  placeRotateControl,
+  placeScaleControl,
+  SCALE_CONTROL_SIZE,
+} from '../../lib/overlay-layout'
 
-export default function ContainerControlsOverlay() {
-  const { camera } = useThree()
-  const selectedObjectId = useSceneStore((s) => s.selectedObjectId)
-  const isEditMode = useSceneStore((s) => s.isEditMode)
-  const isDraggingObject = useSceneStore((s) => s.isDraggingObject)
-  const isCameraDragging = useSceneStore((s) => s.isCameraDragging)
-  const containerGroupRefs = useSceneStore((s) => s.containerGroupRefs)
-  const draftTransformsById = useSceneStore((s) => s.draftTransformsById)
+const SCALE_MIN = 0.5
+const SCALE_MAX = 2.0
+const SCALE_STEP = 0.02
 
-  const [position, setPosition] = useState<{ x: number; y: number; visible: boolean } | null>(null)
-  const rotationAnimationId = useRef<number | null>(null)
-
-  const shouldShow = isEditMode && selectedObjectId && !isDraggingObject && !isCameraDragging
-
-  // 更新屏幕位置
-  useFrame(() => {
-    if (!shouldShow || !selectedObjectId) {
-      setPosition(null)
-      return
-    }
-
-    const groupRef = containerGroupRefs[selectedObjectId]
-    if (!groupRef?.current) {
-      setPosition(null)
-      return
-    }
-
-    const screenPos = getScreenPosition(groupRef.current, camera)
-    setPosition(prev => {
-      if (!prev ||
-          Math.abs(prev.x - screenPos.x) > 1 ||
-          Math.abs(prev.y - screenPos.y) > 1 ||
-          prev.visible !== screenPos.visible) {
-        return screenPos
-      }
-      return prev
-    })
+function useViewportSize() {
+  const [size, setSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
   })
 
-  // 清理动画帧
+  useEffect(() => {
+    function update() {
+      setSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  return size
+}
+
+export default function ContainerControlsOverlay() {
+  const controlsAnchorRect = useSceneStore((s) => s.controlsAnchorRect)
+  const selectedObjectId = useSceneStore((s) => s.selectedObjectId)
+  const isEditMode = useSceneStore((s) => s.isEditMode)
+  const draggingContainerId = useSceneStore((s) => s.draggingContainerId)
+  const scaleFactorById = useSceneStore((s) => s.scaleFactorById)
+  const setScaleFactor = useSceneStore((s) => s.setScaleFactor)
+  const rotationAnimationId = useRef<number | null>(null)
+  const viewport = useViewportSize()
+
   useEffect(() => {
     return () => {
       if (rotationAnimationId.current) {
@@ -52,7 +46,6 @@ export default function ContainerControlsOverlay() {
     }
   }, [])
 
-  // 停止旋转
   function stopRotate() {
     if (rotationAnimationId.current) {
       cancelAnimationFrame(rotationAnimationId.current)
@@ -60,71 +53,68 @@ export default function ContainerControlsOverlay() {
     }
   }
 
-  // 开始左旋转
   function startRotateLeft() {
     stopRotate()
     const rotate = () => {
-      if (!selectedObjectId) return
-
-      const current = useSceneStore.getState().draftTransformsById[selectedObjectId]
+      const id = useSceneStore.getState().selectedObjectId
+      if (!id) return
+      const current = useSceneStore.getState().draftTransformsById[id]
       if (!current) return
-
-      useSceneStore.getState().setDraftTransform(selectedObjectId, {
+      useSceneStore.getState().setDraftTransform(id, {
         ...current,
-        rotationY: current.rotationY - 0.05, // 每帧 ~2.86 度
+        rotationY: current.rotationY - 0.05,
       })
-
       rotationAnimationId.current = requestAnimationFrame(rotate)
     }
     rotate()
   }
 
-  // 开始右旋转
   function startRotateRight() {
     stopRotate()
     const rotate = () => {
-      if (!selectedObjectId) return
-
-      const current = useSceneStore.getState().draftTransformsById[selectedObjectId]
+      const id = useSceneStore.getState().selectedObjectId
+      if (!id) return
+      const current = useSceneStore.getState().draftTransformsById[id]
       if (!current) return
-
-      useSceneStore.getState().setDraftTransform(selectedObjectId, {
+      useSceneStore.getState().setDraftTransform(id, {
         ...current,
         rotationY: current.rotationY + 0.05,
       })
-
       rotationAnimationId.current = requestAnimationFrame(rotate)
     }
     rotate()
   }
 
-  // 更新缩放
-  function updateScale(newScale: number) {
+  function updateScaleFactor(factor: number) {
     if (!selectedObjectId) return
-
-    const current = useSceneStore.getState().draftTransformsById[selectedObjectId]
-    if (!current) return
-
-    useSceneStore.getState().setDraftTransform(selectedObjectId, {
-      ...current,
-      scale: newScale,
-    })
+    setScaleFactor(selectedObjectId, factor)
   }
 
-  if (!shouldShow || !position?.visible || !selectedObjectId) return null
+  const anchorRect = controlsAnchorRect?.visible ? controlsAnchorRect : null
 
-  const draft = draftTransformsById[selectedObjectId]
-  if (!draft) return null
+  if (!isEditMode || !selectedObjectId || !anchorRect) {
+    return null
+  }
+
+  const scaleFactor = scaleFactorById[selectedObjectId] ?? 1
+  const isDragging = draggingContainerId === selectedObjectId
+  const rotatePlacement = placeRotateControl(anchorRect, viewport)
+  const scalePlacement = placeScaleControl(anchorRect, viewport)
 
   return (
-    <Html>
-      <div className="pointer-events-auto">
-        {/* 旋转控件 */}
+    <div data-scene-ui>
+      {!isDragging && (
         <div
-          className="absolute flex gap-2 rounded-lg bg-black/80 p-2"
-          style={{ left: position.x, top: position.y + 40 }}
+          data-scene-ui
+          className="pointer-events-auto fixed z-50 flex -translate-x-1/2 gap-2 rounded-lg bg-black/80 p-2 shadow-lg"
+          style={{
+            left: rotatePlacement.left,
+            top: rotatePlacement.top,
+            maxWidth: `calc(100vw - ${OVERLAY_EDGE_MARGIN * 2}px)`,
+          }}
         >
           <button
+            type="button"
             aria-label="向左旋转"
             onPointerDown={startRotateLeft}
             onPointerUp={stopRotate}
@@ -134,6 +124,7 @@ export default function ContainerControlsOverlay() {
             ↺
           </button>
           <button
+            type="button"
             aria-label="向右旋转"
             onPointerDown={startRotateRight}
             onPointerUp={stopRotate}
@@ -143,27 +134,35 @@ export default function ContainerControlsOverlay() {
             ↻
           </button>
         </div>
+      )}
 
-        {/* 缩放滑块 */}
+      {!isDragging && (
         <div
-          className="absolute flex h-32 flex-col items-center rounded-lg bg-black/80 p-2"
-          style={{ left: position.x + 60, top: position.y - 60 }}
+          data-scene-ui
+          className="pointer-events-auto fixed z-50 flex flex-col items-center rounded-lg bg-black/80 p-2 shadow-lg"
+          style={{
+            left: scalePlacement.left,
+            top: scalePlacement.top,
+            width: SCALE_CONTROL_SIZE.width,
+            height: SCALE_CONTROL_SIZE.height,
+            maxHeight: `calc(100vh - ${OVERLAY_EDGE_MARGIN * 2}px)`,
+          }}
         >
           <input
             type="range"
             aria-label="缩放"
-            aria-valuetext={`缩放 ${draft.scale.toFixed(1)} 倍`}
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            value={draft.scale}
-            onChange={(e) => updateScale(parseFloat(e.target.value))}
-            className="h-full"
+            aria-valuetext={`相对缩放 ${scaleFactor.toFixed(2)} 倍`}
+            min={SCALE_MIN}
+            max={SCALE_MAX}
+            step={SCALE_STEP}
+            value={scaleFactor}
+            onChange={(e) => updateScaleFactor(parseFloat(e.target.value))}
+            className="min-h-0 flex-1 cursor-pointer"
             style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
           />
-          <span className="mt-1 text-xs text-white">{draft.scale.toFixed(1)}x</span>
+          <span className="mt-1 shrink-0 text-xs text-white">{scaleFactor.toFixed(2)}x</span>
         </div>
-      </div>
-    </Html>
+      )}
+    </div>
   )
 }

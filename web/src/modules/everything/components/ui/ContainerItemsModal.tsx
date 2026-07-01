@@ -17,7 +17,16 @@ export default function ContainerItemsModal() {
   if (!showModal || !container) return null
   const areaName = areas.find((a) => a.id === container.areaId)?.name ?? null
 
-  const handleManageItems = () => {
+  function handleAddItem() {
+    const params = new URLSearchParams()
+    if (container.areaId) params.set('areaId', container.areaId)
+    params.set('containerId', container.id)
+    closeContainerModal()
+    navigate(`/items/new?${params.toString()}`)
+  }
+
+  function handleViewAll() {
+    closeContainerModal()
     navigate(`/items?container=${container.id}`)
   }
 
@@ -53,15 +62,7 @@ export default function ContainerItemsModal() {
           )}
 
           {!isLoading && isEmpty && (
-            <div className="text-center">
-              <p className="mb-4 text-text-secondary">此容器暂无物品</p>
-              <button
-                onClick={handleManageItems}
-                className="rounded-button bg-primary px-4 py-2 text-white hover:bg-primary/90"
-              >
-                添加物品
-              </button>
-            </div>
+            <p className="text-center text-text-secondary">此容器暂无物品</p>
           )}
 
           {!isLoading && !isEmpty && (
@@ -86,16 +87,24 @@ export default function ContainerItemsModal() {
           )}
         </div>
 
-        {!isEmpty && (
-          <div className="border-t border-bg-hover px-4 py-3">
+        <div className="space-y-2 border-t border-bg-hover px-4 py-3">
+          <button
+            type="button"
+            onClick={handleAddItem}
+            className="w-full rounded-button bg-primary px-4 py-2 text-white hover:bg-primary/90"
+          >
+            添加物品
+          </button>
+          {!isEmpty ? (
             <button
-              onClick={handleManageItems}
-              className="w-full rounded-button bg-primary px-4 py-2 text-white hover:bg-primary/90"
+              type="button"
+              onClick={handleViewAll}
+              className="w-full rounded-button px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover"
             >
-              管理物品
+              在列表中查看全部
             </button>
-          </div>
-        )}
+          ) : null}
+        </div>
       </div>
     </div>
   )

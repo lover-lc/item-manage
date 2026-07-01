@@ -67,11 +67,17 @@ function isNullableNumber(value: unknown): value is number | null {
 
 function validateEntity(value: unknown): value is Area | Category | Unit {
   if (!isRecord(value)) return false
+  const hasValidDisabled =
+    value.isDisabled === undefined || isBoolean(value.isDisabled)
+  const hasValidSortOrder =
+    value.sortOrder === undefined || isNumber(value.sortOrder)
   return (
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.name) &&
     isBoolean(value.isSystemReserved) &&
-    isNonEmptyString(value.createdAt)
+    isNonEmptyString(value.createdAt) &&
+    hasValidDisabled &&
+    hasValidSortOrder
   )
 }
 
@@ -84,7 +90,7 @@ function validateBackupItem(value: unknown): value is BackupItem {
     (value.purchaseDate === undefined || isNonEmptyString(value.purchaseDate)) &&
     (value.quantity === undefined || isNullableNumber(value.quantity)) &&
     (value.unitId === undefined || isNullableString(value.unitId)) &&
-    isNonEmptyString(value.startDate) &&
+    (value.startDate === undefined || isNullableString(value.startDate)) &&
     isNullableString(value.endDate) &&
     isNullableString(value.expiryDate) &&
     isNonEmptyString(value.areaId) &&
@@ -226,6 +232,8 @@ function areaToDbRow(area: Area): DbArea {
     id: area.id,
     name: area.name,
     is_system_reserved: area.isSystemReserved,
+    sort_order: area.sortOrder ?? 0,
+    vertices: area.vertices ?? null,
     created_at: area.createdAt,
   }
 }
@@ -235,6 +243,7 @@ function categoryToDbRow(category: Category): DbCategory {
     id: category.id,
     name: category.name,
     is_system_reserved: category.isSystemReserved,
+    sort_order: category.sortOrder ?? 0,
     created_at: category.createdAt,
   }
 }
@@ -244,6 +253,8 @@ function unitToDbRow(unit: Unit): DbUnit {
     id: unit.id,
     name: unit.name,
     is_system_reserved: unit.isSystemReserved,
+    is_disabled: unit.isDisabled ?? false,
+    sort_order: unit.sortOrder ?? 0,
     created_at: unit.createdAt,
   }
 }

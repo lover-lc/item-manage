@@ -9,6 +9,7 @@ import ReminderManagePanel from '../components/ReminderManagePanel'
 import {
   useCreateTodoList,
   useDeleteTodoList,
+  useReorderTodoLists,
   useTodoLists,
   useTodos,
   useUpdateTodoList,
@@ -89,6 +90,7 @@ export default function TodoManagePage() {
   const createList = useCreateTodoList()
   const updateList = useUpdateTodoList()
   const deleteList = useDeleteTodoList()
+  const reorderLists = useReorderTodoLists()
   const [listToDelete, setListToDelete] = useState<TodoList | null>(null)
 
   const todoCounts = useMemo(() => {
@@ -157,6 +159,12 @@ export default function TodoManagePage() {
             } else {
               setListToDelete(list)
             }
+          }}
+          onReorderPrivate={(orderedIds) => {
+            reorderLists.mutate({ visibility: 'private', orderedIds })
+          }}
+          onReorderShared={(orderedIds) => {
+            reorderLists.mutate({ visibility: 'shared', orderedIds })
           }}
             />
           </div>

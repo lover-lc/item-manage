@@ -1,57 +1,115 @@
-import { useMemo } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import { useMemo, useRef } from 'react'
+import type { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { BackSide } from 'three'
+import {
+  ROOM_DEPTH,
+  ROOM_FLOOR_COLOR,
+  ROOM_HALF_DEPTH,
+  ROOM_HALF_WIDTH,
+  ROOM_HEIGHT,
+  ROOM_WALL_COLOR,
+  ROOM_WALL_FADE_DISTANCE,
+  ROOM_WALL_FADE_OPACITY,
+  ROOM_WIDTH,
+} from '../../lib/room-constants'
+import { DRAG_THRESHOLD_PX } from '../../lib/scene-controls'
+import { useSceneStore } from '../../store/scene-store'
 
-// 房间尺寸常量
-const ROOM_WIDTH = 5
-const ROOM_HEIGHT = 3
-const ROOM_DEPTH = 5
-const HALF_WIDTH = ROOM_WIDTH / 2
-const HALF_DEPTH = ROOM_DEPTH / 2
+function fadeOpacity(distanceToWall: number): number {
+  if (distanceToWall >= ROOM_WALL_FADE_DISTANCE) return 1
+  return (
+    ROOM_WALL_FADE_OPACITY +
+    (1 - ROOM_WALL_FADE_OPACITY) * (distanceToWall / ROOM_WALL_FADE_DISTANCE)
+  )
+}
+
+function applyWallOpacity(material: THREE.MeshStandardMaterial, opacity: number) {
+  material.opacity = opacity
+  material.transparent = opacity < 1
+  material.depthWrite = opacity >= 1
+  material.needsUpdate = true
+}
 
 export default function Room() {
-  // 共享墙面材质，避免重复创建
-  const wallMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#F5F5DC', roughness: 0.9 }),
-    []
+  const { camera } = useThree()
+  const northRef = useRef<THREE.MeshStandardMaterial>(null)
+  const southRef = useRef<THREE.MeshStandardMaterial>(null)
+  const eastRef = useRef<THREE.MeshStandardMaterial>(null)
+  const westRef = useRef<THREE.MeshStandardMaterial>(null)
+  const ceilingRef = useRef<THREE.MeshStandardMaterial>(null)
+
+  const wallMaterialProps = useMemo(
+    () => ({ color: ROOM_WALL_COLOR, roughness: 0.9 }),
+    [],
   )
+
+  const floorMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: ROOM_FLOOR_COLOR, roughness: 0.85 }),
+    [],
+  )
+
+  function handleFloorClick(e: ThreeEvent<MouseEvent>) {
+    e.stopPropagation()
+    const store = useSceneStore.getState()
+    if (!store.isEditMode) return
+    if (store.isCameraDragging || store.pointerDragDistance >= DRAG_THRESHOLD_PX) return
+    if (store.draggingContainerId) return
+    if (store.activeContainerGestureId) return
+    store.setSelectedObjectId(null)
+    store.setControlsScreenRect(null)
+    store.setControlsAnchorRect(null)
+  }
+
+  useFrame(() => {
+    const { x, z } = camera.position
+    const distNorth = z + ROOM_HALF_DEPTH
+    const distSouth = ROOM_HALF_DEPTH - z
+    const distWest = x + ROOM_HALF_WIDTH
+    const distEast = ROOM_HALF_WIDTH - x
+
+    if (northRef.current) applyWallOpacity(northRef.current, fadeOpacity(distNorth))
+    if (southRef.current) applyWallOpacity(southRef.current, fadeOpacity(distSouth))
+    if (westRef.current) applyWallOpacity(westRef.current, fadeOpacity(distWest))
+    if (eastRef.current) applyWallOpacity(eastRef.current, fadeOpacity(distEast))
+    if (ceilingRef.current) applyWallOpacity(ceilingRef.current, 1)
+  })
 
   return (
     <group>
-      {/* 地板 */}
-      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh
+        position={[0, 0, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        receiveShadow
+        onClick={handleFloorClick}
+      >
         <planeGeometry args={[ROOM_WIDTH, ROOM_DEPTH]} />
-        <meshStandardMaterial color="#E0E0E0" roughness={0.8} />
+        <primitive object={floorMaterial} attach="material" />
       </mesh>
 
-      {/* 北墙 (z = -HALF_DEPTH) */}
-      <mesh position={[0, ROOM_HEIGHT / 2, -HALF_DEPTH]} receiveShadow castShadow>
+      <mesh position={[0, ROOM_HEIGHT / 2, -ROOM_HALF_DEPTH]} receiveShadow castShadow>
         <boxGeometry args={[ROOM_WIDTH, ROOM_HEIGHT, 0.1]} />
-        <primitive object={wallMaterial} attach="material" />
+        <meshStandardMaterial ref={northRef} {...wallMaterialProps} />
       </mesh>
 
-      {/* 南墙 (z = HALF_DEPTH) */}
-      <mesh position={[0, ROOM_HEIGHT / 2, HALF_DEPTH]} receiveShadow castShadow>
+      <mesh position={[0, ROOM_HEIGHT / 2, ROOM_HALF_DEPTH]} receiveShadow castShadow>
         <boxGeometry args={[ROOM_WIDTH, ROOM_HEIGHT, 0.1]} />
-        <primitive object={wallMaterial} attach="material" />
+        <meshStandardMaterial ref={southRef} {...wallMaterialProps} />
       </mesh>
 
-      {/* 东墙 (x = HALF_WIDTH) */}
-      <mesh position={[HALF_WIDTH, ROOM_HEIGHT / 2, 0]} receiveShadow castShadow>
+      <mesh position={[ROOM_HALF_WIDTH, ROOM_HEIGHT / 2, 0]} receiveShadow castShadow>
         <boxGeometry args={[0.1, ROOM_HEIGHT, ROOM_DEPTH]} />
-        <primitive object={wallMaterial} attach="material" />
+        <meshStandardMaterial ref={eastRef} {...wallMaterialProps} />
       </mesh>
 
-      {/* 西墙 (x = -HALF_WIDTH) */}
-      <mesh position={[-HALF_WIDTH, ROOM_HEIGHT / 2, 0]} receiveShadow castShadow>
+      <mesh position={[-ROOM_HALF_WIDTH, ROOM_HEIGHT / 2, 0]} receiveShadow castShadow>
         <boxGeometry args={[0.1, ROOM_HEIGHT, ROOM_DEPTH]} />
-        <primitive object={wallMaterial} attach="material" />
+        <meshStandardMaterial ref={westRef} {...wallMaterialProps} />
       </mesh>
 
-      {/* 天花板 */}
-      <mesh position={[0, ROOM_HEIGHT, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0, ROOM_HEIGHT, 0]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[ROOM_WIDTH, ROOM_DEPTH]} />
-        <meshStandardMaterial color="#FFFFFF" roughness={0.7} side={BackSide} />
+        <meshStandardMaterial ref={ceilingRef} {...wallMaterialProps} />
       </mesh>
     </group>
   )

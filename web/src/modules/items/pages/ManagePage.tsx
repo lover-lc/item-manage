@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { HelpCircle } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
 import DeleteConfirmSheet, {
   type DeleteAction,
   type ManageEntity,
@@ -12,12 +11,14 @@ import {
   useAreas,
   useCreateArea,
   useDeleteArea,
+  useReorderAreas,
   useUpdateArea,
 } from '../hooks/use-areas'
 import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
+  useReorderCategories,
   useUpdateCategory,
 } from '../hooks/use-categories'
 import {
@@ -29,10 +30,10 @@ import {
 import {
   useCreateUnit,
   useDeleteUnit,
+  useReorderUnits,
   useUnits,
   useUpdateUnit,
 } from '../hooks/use-units'
-import { useAuth } from '../../../shared/hooks/use-auth'
 import {
   exportBackup,
   importBackup,
@@ -119,8 +120,6 @@ function findUncategorized(entities: ManageEntity[]): ManageEntity | undefined {
 
 export default function ManagePage() {
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  const { signOut } = useAuth()
   const importInputRef = useRef<HTMLInputElement>(null)
 
   const [mode, setMode] = useState<ManageMode>('area')
@@ -147,6 +146,9 @@ export default function ManagePage() {
   const createUnit = useCreateUnit()
   const updateUnit = useUpdateUnit()
   const deleteUnit = useDeleteUnit()
+  const reorderAreas = useReorderAreas()
+  const reorderCategories = useReorderCategories()
+  const reorderUnits = useReorderUnits()
   const batchUpdateItemsArea = useBatchUpdateItemsArea()
   const batchUpdateItemsCategory = useBatchUpdateItemsCategory()
   const batchDeleteItems = useBatchDeleteItems()
@@ -281,19 +283,6 @@ export default function ManagePage() {
     window.alert('引导页即将推出')
   }
 
-  async function handleSignOut() {
-    const confirmed = window.confirm('确定退出登录吗？')
-    if (!confirmed) return
-
-    try {
-      await signOut()
-      queryClient.clear()
-      navigate('/login', { replace: true })
-    } catch (err) {
-      window.alert(String((err as Error)?.message || '退出失败'))
-    }
-  }
-
   async function handleExport() {
     if (!supabase) {
       window.alert('未登录或未配置 Supabase')
@@ -400,6 +389,9 @@ export default function ManagePage() {
               onRename={async (id, name) => {
                 await updateArea.mutateAsync({ id, name })
               }}
+              onReorder={(orderedIds) => {
+                reorderAreas.mutate(orderedIds)
+              }}
               onDeleteRequest={handleDeleteRequest}
               isLoading={areasLoading}
             />
@@ -414,6 +406,9 @@ export default function ManagePage() {
               onRename={async (id, name) => {
                 await updateCategory.mutateAsync({ id, name })
               }}
+              onReorder={(orderedIds) => {
+                reorderCategories.mutate(orderedIds)
+              }}
               onDeleteRequest={handleDeleteRequest}
               isLoading={categoriesLoading}
             />
@@ -427,6 +422,16 @@ export default function ManagePage() {
               }}
               onRename={async (id, name) => {
                 await updateUnit.mutateAsync({ id, name })
+              }}
+              onToggleDisabled={async (entity) => {
+                if (!('isDisabled' in entity)) return
+                await updateUnit.mutateAsync({
+                  id: entity.id,
+                  isDisabled: !entity.isDisabled,
+                })
+              }}
+              onReorder={(orderedIds) => {
+                reorderUnits.mutate(orderedIds)
               }}
               onDeleteRequest={handleDeleteRequest}
               isLoading={unitsLoading}
@@ -464,20 +469,6 @@ export default function ManagePage() {
               {isImporting ? '导入中…' : '导入数据'}
             </button>
           </div>
-        </section>
-
-        <section className="mt-8 border-t border-bg-hover pt-6">
-          <h2 className="text-sm font-medium text-text-secondary">账号</h2>
-          <p className="mt-1 text-xs text-text-tertiary">
-            退出后需重新输入家庭密码
-          </p>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="mt-3 w-full rounded-button border border-bg-hover px-4 py-2.5 text-sm text-text-secondary hover:bg-bg-hover"
-          >
-            退出登录
-          </button>
         </section>
       </div>
 

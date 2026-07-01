@@ -1,6 +1,24 @@
-import { Plus } from 'lucide-react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical, Plus } from 'lucide-react'
 import { useState } from 'react'
 import SwipeRow from '../../../shared/components/ui/SwipeRow'
+import { cn } from '@/lib/utils'
 import type { Area, Category, Unit } from '../lib/types'
 import { SYSTEM_RESERVED_NAME } from '../lib/seed-defaults'
 
@@ -81,6 +99,86 @@ function NamePromptDialog({
   )
 }
 
+function SortableManageRow({
+  entity,
+  type,
+  count,
+  onRename,
+  onDelete,
+  onToggleDisabled,
+}: {
+  entity: ManageEntity
+  type: ManageEntityType
+  count: number
+  onRename?: () => void
+  onDelete?: () => void
+  onToggleDisabled?: () => void
+}) {
+  const isDisabled =
+    type === 'unit' && 'isDisabled' in entity && entity.isDisabled === true
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: entity.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <li ref={setNodeRef} style={style} className={cn(isDragging && 'z-10')}>
+      <SwipeRow
+        deleteDisabled={!onDelete}
+        onDelete={onDelete}
+        onContentClick={onRename}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-2 px-4 py-3',
+            isDragging && 'shadow-md ring-1 ring-bg-hover',
+          )}
+        >
+          <button
+            type="button"
+            className="shrink-0 touch-none rounded p-1 text-text-tertiary hover:bg-bg-hover"
+            aria-label="拖动排序"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="size-4" />
+          </button>
+          <span
+            className={[
+              'min-w-0 flex-1 truncate text-sm',
+              isDisabled ? 'text-status-expired' : 'text-text',
+            ].join(' ')}
+          >
+            {entity.name}
+            {isDisabled ? (
+              <span className="ml-2 text-xs font-normal text-status-expired">
+                已停用
+              </span>
+            ) : null}
+          </span>
+          <span className="shrink-0 text-sm text-text-secondary">{count} 件</span>
+          {type === 'unit' && onToggleDisabled ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleDisabled()
+              }}
+              className="shrink-0 rounded-button px-2 py-1 text-xs text-text-secondary hover:bg-bg-hover"
+            >
+              {isDisabled ? '启用' : '停用'}
+            </button>
+          ) : null}
+        </div>
+      </SwipeRow>
+    </li>
+  )
+}
+
 interface ManageListProps {
   type: ManageEntityType
   entities: ManageEntity[]
@@ -88,6 +186,8 @@ interface ManageListProps {
   onAdd: (name: string) => Promise<void>
   onRename: (id: string, name: string) => Promise<void>
   onDeleteRequest: (entity: ManageEntity) => void
+  onToggleDisabled?: (entity: ManageEntity) => void
+  onReorder: (orderedIds: string[]) => void
   isLoading?: boolean
 }
 
@@ -98,6 +198,8 @@ export default function ManageList({
   onAdd,
   onRename,
   onDeleteRequest,
+  onToggleDisabled,
+  onReorder,
   isLoading = false,
 }: ManageListProps) {
   const typeLabel = TYPE_LABELS[type]
@@ -109,12 +211,30 @@ export default function ManageList({
   const [showSystemDeleteAlert, setShowSystemDeleteAlert] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
   function attemptDelete(entity: ManageEntity) {
     if (entity.isSystemReserved || entity.name === SYSTEM_RESERVED_NAME) {
       setShowSystemDeleteAlert(true)
       return
     }
     onDeleteRequest(entity)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = entities.findIndex((entity) => entity.id === active.id)
+    const newIndex = entities.findIndex((entity) => entity.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    onReorder(arrayMove(entities.map((entity) => entity.id), oldIndex, newIndex))
   }
 
   async function handleAdd(name: string) {
@@ -159,35 +279,43 @@ export default function ManageList({
           暂无{typeLabel}
         </p>
       ) : (
-        <ul className="mt-3 space-y-2">
-          {entities.map((entity) => {
-            const count = itemCounts[entity.id] ?? 0
-            const isSystem = entity.isSystemReserved
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={entities.map((entity) => entity.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="mt-3 space-y-2">
+              {entities.map((entity) => {
+                const count = itemCounts[entity.id] ?? 0
+                const isSystem = entity.isSystemReserved
 
-            return (
-              <li key={entity.id}>
-                <SwipeRow
-                  deleteDisabled={isSystem}
-                  onDelete={
-                    isSystem ? undefined : () => attemptDelete(entity)
-                  }
-                  onContentClick={
-                    isSystem ? undefined : () => setEntityToRename(entity)
-                  }
-                >
-                  <div className="flex items-center gap-2 px-4 py-3">
-                    <span className="min-w-0 flex-1 truncate text-sm text-text">
-                      {entity.name}
-                    </span>
-                    <span className="shrink-0 text-sm text-text-secondary">
-                      {count} 件
-                    </span>
-                  </div>
-                </SwipeRow>
-              </li>
-            )
-          })}
-        </ul>
+                return (
+                  <SortableManageRow
+                    key={entity.id}
+                    entity={entity}
+                    type={type}
+                    count={count}
+                    onRename={
+                      isSystem ? undefined : () => setEntityToRename(entity)
+                    }
+                    onDelete={
+                      isSystem ? undefined : () => attemptDelete(entity)
+                    }
+                    onToggleDisabled={
+                      type === 'unit' && onToggleDisabled && !isSystem
+                        ? () => onToggleDisabled(entity)
+                        : undefined
+                    }
+                  />
+                )
+              })}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
 
       {showAddDialog ? (

@@ -207,10 +207,12 @@ export function DateInputRow({
   label,
   value,
   onChange,
+  allowClear = true,
 }: {
   label: string
-  value: string
-  onChange: (value: string) => void
+  value: string | null
+  onChange: (value: string | null) => void
+  allowClear?: boolean
 }) {
   const fieldValue = dateFieldFromIso(
     value ? composeAllDayIso(value) : null,
@@ -218,15 +220,17 @@ export function DateInputRow({
   )
 
   return (
-    <div className="px-4 py-2.5">
+    <div className="flex items-center gap-2 px-4 py-2.5">
+      <span className="w-20 shrink-0 text-sm text-text-secondary">{label}</span>
       <DateField
-        label={label}
         value={fieldValue}
         onChange={(next) => {
           const iso = isoFromDateField(next, true)
-          onChange(iso ? iso.slice(0, 10) : '')
+          onChange(iso ? iso.slice(0, 10) : null)
         }}
-        allowClear={false}
+        allowClear={allowClear}
+        placeholder="选择日期"
+        className="min-w-0 flex-1"
       />
     </div>
   )
@@ -240,9 +244,9 @@ export function ReadOnlyDateRow({
   value: string | null
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-      <span className="shrink-0 text-sm text-text-secondary">{label}</span>
-      <span className="text-sm text-text">
+    <div className="flex items-center gap-2 px-4 py-2.5">
+      <span className="w-20 shrink-0 text-sm text-text-secondary">{label}</span>
+      <span className="min-w-0 flex-1 text-sm text-text">
         {value ? formatDisplayDate(value) : '—'}
       </span>
     </div>
@@ -285,20 +289,24 @@ export function PickerButton({
   placeholder,
   onClick,
   compact = false,
+  disabled = false,
 }: {
   value: string | null
   placeholder: string
   onClick: () => void
   compact?: boolean
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={[
         compact ? compactFieldBoxClass : 'flex w-full min-w-0 items-center rounded-button border border-bg-hover bg-bg text-sm',
         'justify-between text-left',
         compact ? 'gap-0.5 px-2' : 'px-3 py-2',
+        disabled ? 'cursor-not-allowed opacity-50' : '',
       ].join(' ')}
     >
       <span

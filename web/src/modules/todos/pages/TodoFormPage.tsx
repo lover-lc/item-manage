@@ -1,6 +1,6 @@
-import { ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Checkbox } from '@/components/ui/checkbox'
 import BottomSheet from '../../../shared/components/ui/BottomSheet'
 import DateField, {
@@ -15,8 +15,6 @@ import { useCurrentMember } from '../../../shared/hooks/use-current-member'
 import { useFamilyMembers, type FamilyMember } from '../../../shared/hooks/use-family-members'
 import {
   useCreateTodo,
-  useCreateTodoList,
-  useCreateTodoTag,
   useDeleteTodo,
   useNegotiationAction,
   useTodo,
@@ -65,7 +63,6 @@ import {
   getLatestStatusReason,
   isReasonStatus,
 } from '../lib/todo-status-reason'
-import { DEFAULT_TODO_LIST_COLOR } from '../lib/todo-list-colors'
 import type { RecurrenceRule, TodoFormInput, TodoPriority } from '../types/todo-types'
 import { cn } from '@/lib/utils'
 
@@ -143,66 +140,6 @@ function PickerButton({
   )
 }
 
-function QuickAddSheet({
-  open,
-  title,
-  placeholder,
-  onClose,
-  onSubmit,
-  isPending,
-}: {
-  open: boolean
-  title: string
-  placeholder: string
-  onClose: () => void
-  onSubmit: (name: string) => void
-  isPending: boolean
-}) {
-  const [name, setName] = useState('')
-
-  useEffect(() => {
-    if (open) setName('')
-  }, [open])
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) return
-    onSubmit(trimmed)
-  }
-
-  return (
-    <BottomSheet open={open} onClose={onClose} title={title}>
-      <form onSubmit={handleSubmit} className="space-y-4 p-4">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={placeholder}
-          autoFocus
-          className={fieldInputClass}
-        />
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-button px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            disabled={isPending || !name.trim()}
-            className="rounded-button bg-primary px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
-          >
-            {isPending ? '添加中…' : '添加'}
-          </button>
-        </div>
-      </form>
-    </BottomSheet>
-  )
-}
-
 function OptionSheet({
   open,
   title,
@@ -210,10 +147,6 @@ function OptionSheet({
   selectedId,
   onSelect,
   onClose,
-  onAddNew,
-  addLabel,
-  manageHref,
-  manageLabel = '管理清单',
   showMemberAvatar = false,
 }: {
   open: boolean
@@ -228,10 +161,6 @@ function OptionSheet({
   selectedId: string | null
   onSelect: (id: string) => void
   onClose: () => void
-  onAddNew?: () => void
-  addLabel?: string
-  manageHref?: string
-  manageLabel?: string
   showMemberAvatar?: boolean
 }) {
   return (
@@ -268,32 +197,6 @@ function OptionSheet({
           </li>
         ))}
       </ul>
-      {onAddNew || manageHref ? (
-        <div className="space-y-1 border-t border-bg-hover p-4">
-          {addLabel && onAddNew ? (
-            <button
-              type="button"
-              onClick={() => {
-                onClose()
-                onAddNew()
-              }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-button py-2.5 text-sm text-primary hover:bg-bg-hover"
-            >
-              <Plus className="size-4" />
-              {addLabel}
-            </button>
-          ) : null}
-          {manageHref ? (
-            <Link
-              to={manageHref}
-              onClick={onClose}
-              className="flex w-full items-center justify-center rounded-button py-2.5 text-sm text-text-secondary hover:bg-bg-hover"
-            >
-              {manageLabel}
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
     </BottomSheet>
   )
 }
@@ -313,8 +216,6 @@ export default function TodoFormPage() {
   const saveNegotiation = useNegotiationAction()
   const statusAction = useTodoStatusAction()
   const deleteTodo = useDeleteTodo()
-  const createList = useCreateTodoList()
-  const createTag = useCreateTodoTag()
   const lastUsedListId = useTodoUiStore((s) => s.lastUsedListId)
   const setLastUsedListId = useTodoUiStore((s) => s.setLastUsedListId)
   const customReminderPresets = useTodoUiStore((s) => s.reminderPresets)
@@ -342,12 +243,10 @@ export default function TodoFormPage() {
   const [error, setError] = useState<string | null>(null)
   const [updateSeries, setUpdateSeries] = useState(false)
   const [listSheetOpen, setListSheetOpen] = useState(false)
-  const [newListSheetOpen, setNewListSheetOpen] = useState(false)
   const [assigneeSheetOpen, setAssigneeSheetOpen] = useState(false)
   const [prioritySheetOpen, setPrioritySheetOpen] = useState(false)
   const [recurrenceSheetOpen, setRecurrenceSheetOpen] = useState(false)
   const [reminderSheetOpen, setReminderSheetOpen] = useState(false)
-  const [newTagSheetOpen, setNewTagSheetOpen] = useState(false)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
@@ -851,23 +750,6 @@ export default function TodoFormPage() {
     }
   }
 
-  async function handleAddList(name: string) {
-    const list = await createList.mutateAsync({
-      name,
-      visibility: 'private',
-      color: DEFAULT_TODO_LIST_COLOR,
-    })
-    setListId(list.id)
-    setLastUsedListId(list.id)
-    setNewListSheetOpen(false)
-  }
-
-  async function handleAddTag(name: string) {
-    const tag = await createTag.mutateAsync({ name })
-    setTagIds((prev) => [...prev, tag.id])
-    setNewTagSheetOpen(false)
-  }
-
   if (isEdit && todoLoading) {
     return (
       <div className="min-h-svh bg-bg">
@@ -1080,14 +962,6 @@ export default function TodoFormPage() {
                     </label>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setNewTagSheetOpen(true)}
-                  className="mt-2 flex items-center gap-1 text-sm text-primary"
-                >
-                  <Plus className="size-4" />
-                  新建标签
-                </button>
               </>
             )}
           </FormRow>
@@ -1147,11 +1021,6 @@ export default function TodoFormPage() {
         selectedId={listId || null}
         onSelect={setListId}
         onClose={() => setListSheetOpen(false)}
-        onAddNew={() => {
-          setNewListSheetOpen(true)
-        }}
-        addLabel="新建清单"
-        manageHref="/todos/manage"
       />
 
       <OptionSheet
@@ -1184,8 +1053,6 @@ export default function TodoFormPage() {
           setPreservedRecurrenceRule(null)
         }}
         onClose={() => setRecurrenceSheetOpen(false)}
-        manageHref="/todos/manage?tab=recurrence"
-        manageLabel="管理重复预设"
       />
 
       <OptionSheet
@@ -1207,26 +1074,6 @@ export default function TodoFormPage() {
           setReminderSelection({ type: 'preset', presetId: id })
         }}
         onClose={() => setReminderSheetOpen(false)}
-        manageHref="/todos/manage?tab=reminders"
-        manageLabel="管理提醒预设"
-      />
-
-      <QuickAddSheet
-        open={newListSheetOpen}
-        title="新建清单"
-        placeholder="清单名称"
-        onClose={() => setNewListSheetOpen(false)}
-        onSubmit={handleAddList}
-        isPending={createList.isPending}
-      />
-
-      <QuickAddSheet
-        open={newTagSheetOpen}
-        title="新建标签"
-        placeholder="标签名称"
-        onClose={() => setNewTagSheetOpen(false)}
-        onSubmit={handleAddTag}
-        isPending={createTag.isPending}
       />
     </div>
   )

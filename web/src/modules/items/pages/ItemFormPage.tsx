@@ -1,14 +1,13 @@
-import { Plus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import BottomSheet from '../../../shared/components/ui/BottomSheet'
 import ItemHero from '../components/ItemHero'
 import ItemFields, { type ItemFieldsCostStats } from '../components/ItemFields'
-import { useAreas, useCreateArea } from '../hooks/use-areas'
-import { useCategories, useCreateCategory } from '../hooks/use-categories'
+import { useAreas } from '../hooks/use-areas'
+import { useCategories } from '../hooks/use-categories'
 import { useCreateItem, useItem, useUpdateItem } from '../hooks/use-items'
 import { useContainers } from '../../everything/hooks/use-containers'
-import { useCreateUnit, useUnits } from '../hooks/use-units'
+import { useUnits } from '../hooks/use-units'
 import PageHeaderBar from '../../../shared/components/PageHeaderBar'
 import {
   dailyCost,
@@ -24,66 +23,6 @@ import {
   validationErrorMessage,
 } from '../lib/validators'
 
-function QuickAddSheet({
-  open,
-  title,
-  placeholder,
-  onClose,
-  onSubmit,
-  isPending,
-}: {
-  open: boolean
-  title: string
-  placeholder: string
-  onClose: () => void
-  onSubmit: (name: string) => void
-  isPending: boolean
-}) {
-  const [name, setName] = useState('')
-
-  useEffect(() => {
-    if (open) setName('')
-  }, [open])
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) return
-    onSubmit(trimmed)
-  }
-
-  return (
-    <BottomSheet open={open} onClose={onClose} title={title}>
-      <form onSubmit={handleSubmit} className="space-y-4 p-4">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={placeholder}
-          autoFocus
-          className="w-full rounded-button border border-bg-hover bg-bg px-3 py-2.5 text-sm text-text outline-none focus:border-primary"
-        />
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-button px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            disabled={isPending || !name.trim()}
-            className="rounded-button bg-primary px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
-          >
-            {isPending ? '添加中…' : '添加'}
-          </button>
-        </div>
-      </form>
-    </BottomSheet>
-  )
-}
-
 function OptionSheet({
   open,
   title,
@@ -91,9 +30,6 @@ function OptionSheet({
   selectedId,
   onSelect,
   onClose,
-  onAddNew,
-  addLabel,
-  hideAddNew = false,
 }: {
   open: boolean
   title: string
@@ -101,9 +37,6 @@ function OptionSheet({
   selectedId: string | null
   onSelect: (id: string) => void
   onClose: () => void
-  onAddNew: () => void
-  addLabel: string
-  hideAddNew?: boolean
 }) {
   return (
     <BottomSheet open={open} onClose={onClose} title={title}>
@@ -125,21 +58,6 @@ function OptionSheet({
           </li>
         ))}
       </ul>
-      {!hideAddNew ? (
-        <div className="border-t border-bg-hover p-4">
-          <button
-            type="button"
-            onClick={() => {
-              onClose()
-              onAddNew()
-            }}
-            className="flex w-full items-center justify-center gap-1.5 rounded-button py-2.5 text-sm text-primary hover:bg-bg-hover"
-          >
-            <Plus className="size-4" />
-            {addLabel}
-          </button>
-        </div>
-      ) : null}
     </BottomSheet>
   )
 }
@@ -147,6 +65,7 @@ function OptionSheet({
 export default function ItemFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const isEdit = Boolean(id)
 
   const { data: existingItem, isLoading: itemLoading } = useItem(id)
@@ -156,9 +75,6 @@ export default function ItemFormPage() {
   const { data: containers = [] } = useContainers()
   const createItem = useCreateItem()
   const updateItem = useUpdateItem()
-  const createArea = useCreateArea()
-  const createCategory = useCreateCategory()
-  const createUnit = useCreateUnit()
 
   const selectableAreas = useMemo(
     () => areas.filter((a) => !a.isSystemReserved),
@@ -177,24 +93,46 @@ export default function ItemFormPage() {
   const [unitId, setUnitId] = useState<string | null>(null)
   const [areaId, setAreaId] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<string | null>(null)
-  const [specificLocation, setSpecificLocation] = useState('')
   const [containerId, setContainerId] = useState<string | null>(null)
-  const [purchaseDate, setPurchaseDate] = useState(todayIso)
-  const [startDate, setStartDate] = useState(todayIso)
-  const [hasEndDate, setHasEndDate] = useState(false)
-  const [endDate, setEndDate] = useState(todayIso)
-  const [hasExpiryDate, setHasExpiryDate] = useState(false)
-  const [expiryDate, setExpiryDate] = useState(todayIso)
+  const [purchaseDate, setPurchaseDate] = useState<string | null>(todayIso)
+  const [startDate, setStartDate] = useState<string | null>(null)
+  const [endDate, setEndDate] = useState<string | null>(null)
+  const [expiryDate, setExpiryDate] = useState<string | null>(null)
   const [initialized, setInitialized] = useState(false)
+  const [prefillApplied, setPrefillApplied] = useState(false)
+
+  const selectableUnits = useMemo(() => {
+    const enabled = units.filter((u) => !u.isDisabled)
+    if (unitId && !enabled.some((u) => u.id === unitId)) {
+      const selected = units.find((u) => u.id === unitId)
+      if (selected) return [...enabled, selected]
+    }
+    return enabled
+  }, [units, unitId])
 
   const [areaSheetOpen, setAreaSheetOpen] = useState(false)
   const [categorySheetOpen, setCategorySheetOpen] = useState(false)
   const [unitSheetOpen, setUnitSheetOpen] = useState(false)
   const [containerSheetOpen, setContainerSheetOpen] = useState(false)
-  const [newAreaSheetOpen, setNewAreaSheetOpen] = useState(false)
-  const [newCategorySheetOpen, setNewCategorySheetOpen] = useState(false)
-  const [newUnitSheetOpen, setNewUnitSheetOpen] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isEdit || prefillApplied) return
+    const preAreaId = searchParams.get('areaId')
+    const preContainerId = searchParams.get('containerId')
+    if (preAreaId) setAreaId(preAreaId)
+    if (preContainerId) setContainerId(preContainerId)
+    setPrefillApplied(true)
+  }, [isEdit, prefillApplied, searchParams])
+
+  useEffect(() => {
+    if (isEdit || !prefillApplied || containers.length === 0) return
+    if (!containerId) return
+    const container = containers.find((c) => c.id === containerId)
+    if (container?.areaId) {
+      setAreaId(container.areaId)
+    }
+  }, [isEdit, prefillApplied, containerId, containers])
 
   useEffect(() => {
     if (!isEdit || !existingItem || initialized) return
@@ -206,46 +144,55 @@ export default function ItemFormPage() {
     setUnitId(existingItem.unitId)
     setAreaId(existingItem.areaId)
     setCategoryId(existingItem.categoryId)
-    setSpecificLocation(existingItem.specificLocation)
     setContainerId(existingItem.containerId)
     setPurchaseDate(existingItem.purchaseDate)
     setStartDate(existingItem.startDate)
-    setHasEndDate(existingItem.endDate != null)
-    setEndDate(existingItem.endDate ?? todayIso)
-    setHasExpiryDate(existingItem.expiryDate != null)
-    setExpiryDate(existingItem.expiryDate ?? todayIso)
+    setEndDate(existingItem.endDate)
+    setExpiryDate(existingItem.expiryDate)
     setInitialized(true)
-  }, [isEdit, existingItem, initialized, todayIso])
+  }, [isEdit, existingItem, initialized])
 
-  const selectedAreaName =
-    selectableAreas.find((a) => a.id === areaId)?.name ??
-    areas.find((a) => a.id === areaId)?.name ??
-    null
+  const containersInArea = useMemo(() => {
+    if (!areaId) return []
+    return containers.filter((c) => c.areaId === areaId)
+  }, [containers, areaId])
+
+  useEffect(() => {
+    if (!containerId || !areaId) return
+    const container = containers.find((c) => c.id === containerId)
+    if (container && container.areaId !== areaId) {
+      setContainerId(null)
+    }
+  }, [areaId, containerId, containers])
+
+  const selectedAreaName = areas.find((a) => a.id === areaId)?.name ?? null
   const selectedCategoryName =
     selectableCategories.find((c) => c.id === categoryId)?.name ??
     categories.find((c) => c.id === categoryId)?.name ??
     null
   const selectedUnitName = units.find((u) => u.id === unitId)?.name ?? null
   const selectedContainerName =
-    containers.find((c) => c.id === containerId)?.name ?? null
+    containersInArea.find((c) => c.id === containerId)?.name ??
+    containers.find((c) => c.id === containerId)?.name ??
+    null
 
   const editStatus = useMemo(() => {
     if (!isEdit) return undefined
     return getItemStatus({
-      endDate: hasEndDate ? parseISODate(endDate) : null,
-      expiryDate: hasExpiryDate ? parseISODate(expiryDate) : null,
+      endDate: endDate ? parseISODate(endDate) : null,
+      expiryDate: expiryDate ? parseISODate(expiryDate) : null,
       today: new Date(),
     })
-  }, [isEdit, hasEndDate, endDate, hasExpiryDate, expiryDate])
+  }, [isEdit, endDate, expiryDate])
 
   const previewCostStats = useMemo((): ItemFieldsCostStats | undefined => {
-    if (!isEdit) return undefined
+    if (!isEdit || !startDate) return undefined
     const price = parsePrice(priceText)
     if (price === null) return undefined
 
     const days = usedDays(
       parseISODate(startDate),
-      hasEndDate ? parseISODate(endDate) : new Date(),
+      endDate ? parseISODate(endDate) : new Date(),
     )
     const quantity = parseQuantity(quantityText)
     const hasUnitPrice =
@@ -260,15 +207,24 @@ export default function ItemFormPage() {
     }
   }, [
     isEdit,
-    priceText,
     startDate,
-    hasEndDate,
+    priceText,
     endDate,
     quantityText,
     selectedUnitName,
   ])
 
   const isSaving = createItem.isPending || updateItem.isPending
+
+  function handleAreaSelect(nextAreaId: string) {
+    setAreaId(nextAreaId)
+    const container = containerId
+      ? containers.find((c) => c.id === containerId)
+      : null
+    if (container && container.areaId !== nextAreaId) {
+      setContainerId(null)
+    }
+  }
 
   async function handleSave() {
     const error = validateItemForm({
@@ -278,9 +234,9 @@ export default function ItemFormPage() {
       unitId,
       areaId,
       categoryId,
-      purchaseDate: parseISODate(purchaseDate),
-      startDate: parseISODate(startDate),
-      endDate: hasEndDate ? parseISODate(endDate) : null,
+      purchaseDate: purchaseDate ? parseISODate(purchaseDate) : null,
+      startDate: startDate ? parseISODate(startDate) : null,
+      endDate: endDate ? parseISODate(endDate) : null,
     })
 
     if (error) {
@@ -289,7 +245,7 @@ export default function ItemFormPage() {
     }
 
     const price = parsePrice(priceText)
-    if (price === null || !areaId || !categoryId) return
+    if (price === null || !areaId || !categoryId || !purchaseDate) return
 
     const quantity = parseQuantity(quantityText)
 
@@ -301,11 +257,11 @@ export default function ItemFormPage() {
       unitId: quantity != null ? unitId : null,
       areaId,
       categoryId,
-      specificLocation: specificLocation.trim(),
+      specificLocation: '',
       containerId,
       startDate,
-      endDate: hasEndDate ? endDate : null,
-      expiryDate: hasExpiryDate ? expiryDate : null,
+      endDate,
+      expiryDate,
     }
 
     try {
@@ -318,24 +274,6 @@ export default function ItemFormPage() {
     } catch {
       setValidationError('保存失败，请稍后重试')
     }
-  }
-
-  async function handleAddArea(name: string) {
-    const area = await createArea.mutateAsync({ name })
-    setAreaId(area.id)
-    setNewAreaSheetOpen(false)
-  }
-
-  async function handleAddCategory(name: string) {
-    const category = await createCategory.mutateAsync({ name })
-    setCategoryId(category.id)
-    setNewCategorySheetOpen(false)
-  }
-
-  async function handleAddUnit(name: string) {
-    const unit = await createUnit.mutateAsync({ name })
-    setUnitId(unit.id)
-    setNewUnitSheetOpen(false)
   }
 
   if (isEdit && itemLoading) {
@@ -404,20 +342,15 @@ export default function ItemFormPage() {
           onOpenAreaPicker={() => setAreaSheetOpen(true)}
           categoryName={selectedCategoryName}
           onOpenCategoryPicker={() => setCategorySheetOpen(true)}
-          specificLocation={specificLocation}
-          onSpecificLocationChange={setSpecificLocation}
           containerName={selectedContainerName}
+          containerPickerDisabled={!areaId}
           onOpenContainerPicker={() => setContainerSheetOpen(true)}
           purchaseDate={purchaseDate}
           onPurchaseDateChange={setPurchaseDate}
           startDate={startDate}
           onStartDateChange={setStartDate}
-          hasEndDate={hasEndDate}
-          onHasEndDateChange={setHasEndDate}
           endDate={endDate}
           onEndDateChange={setEndDate}
-          hasExpiryDate={hasExpiryDate}
-          onHasExpiryDateChange={setHasExpiryDate}
           expiryDate={expiryDate}
           onExpiryDateChange={setExpiryDate}
         />
@@ -452,10 +385,8 @@ export default function ItemFormPage() {
         title="选择区域"
         options={selectableAreas}
         selectedId={areaId}
-        onSelect={setAreaId}
+        onSelect={handleAreaSelect}
         onClose={() => setAreaSheetOpen(false)}
-        onAddNew={() => setNewAreaSheetOpen(true)}
-        addLabel="新建区域"
       />
 
       <OptionSheet
@@ -465,26 +396,6 @@ export default function ItemFormPage() {
         selectedId={categoryId}
         onSelect={setCategoryId}
         onClose={() => setCategorySheetOpen(false)}
-        onAddNew={() => setNewCategorySheetOpen(true)}
-        addLabel="新建分类"
-      />
-
-      <QuickAddSheet
-        open={newAreaSheetOpen}
-        title="新建区域"
-        placeholder="区域名称"
-        onClose={() => setNewAreaSheetOpen(false)}
-        onSubmit={handleAddArea}
-        isPending={createArea.isPending}
-      />
-
-      <QuickAddSheet
-        open={newCategorySheetOpen}
-        title="新建分类"
-        placeholder="分类名称"
-        onClose={() => setNewCategorySheetOpen(false)}
-        onSubmit={handleAddCategory}
-        isPending={createCategory.isPending}
       />
 
       <OptionSheet
@@ -492,34 +403,20 @@ export default function ItemFormPage() {
         title="选择所在容器"
         options={[
           { id: '', name: '未指定' },
-          ...containers.map((c) => ({ id: c.id, name: c.name })),
+          ...containersInArea.map((c) => ({ id: c.id, name: c.name })),
         ]}
         selectedId={containerId ?? ''}
-        onSelect={(id) => setContainerId(id || null)}
+        onSelect={(nextId) => setContainerId(nextId || null)}
         onClose={() => setContainerSheetOpen(false)}
-        onAddNew={() => setContainerSheetOpen(false)}
-        addLabel=""
-        hideAddNew
       />
 
       <OptionSheet
         open={unitSheetOpen}
         title="选择计量单位"
-        options={units}
+        options={selectableUnits}
         selectedId={unitId}
         onSelect={setUnitId}
         onClose={() => setUnitSheetOpen(false)}
-        onAddNew={() => setNewUnitSheetOpen(true)}
-        addLabel="新建计量单位"
-      />
-
-      <QuickAddSheet
-        open={newUnitSheetOpen}
-        title="新建计量单位"
-        placeholder="单位名称"
-        onClose={() => setNewUnitSheetOpen(false)}
-        onSubmit={handleAddUnit}
-        isPending={createUnit.isPending}
       />
     </div>
   )

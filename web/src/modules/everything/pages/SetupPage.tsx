@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box } from 'lucide-react'
 import { useSaveSceneConfig } from '../hooks/use-scene-config'
-import { useCreateContainersBatch } from '../hooks/use-containers'
-import { useAreas } from '../../items/hooks/use-areas'
-import { DEFAULT_SCENE_CONFIG, getDemoContainers } from '../lib/demo-scene'
+import { useDeleteAllContainers } from '../hooks/use-containers'
+import { DEFAULT_SCENE_CONFIG } from '../lib/demo-scene'
+import { useSceneStore } from '../store/scene-store'
 
 export default function SetupPage() {
   const navigate = useNavigate()
@@ -12,23 +12,25 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null)
 
   const { save: saveScene } = useSaveSceneConfig()
-  const { mutateAsync: createContainers } = useCreateContainersBatch()
-  const { data: areas } = useAreas()
+  const deleteAllContainers = useDeleteAllContainers()
 
-  const handleLoadDemo = async () => {
+  async function handleCreateEmptyRoom() {
     setLoading(true)
     setError(null)
 
     try {
-      const clientRoomArea = areas?.find((a) => a.name.includes('客厅'))
-      const areaId = clientRoomArea?.id || areas?.[0]?.id
+      await deleteAllContainers.mutateAsync()
+      await saveScene({
+        ...DEFAULT_SCENE_CONFIG,
+        lastModified: Date.now(),
+      })
 
-      if (!areaId) {
-        throw new Error('未找到区域，请先在物品管理中创建区域')
-      }
+      const store = useSceneStore.getState()
+      store.clearDraftTransforms()
+      store.setEditMode(false)
+      store.setSelectedObjectId(null)
+      store.clearCameraState()
 
-      await saveScene(DEFAULT_SCENE_CONFIG)
-      await createContainers(getDemoContainers(areaId))
       navigate('/everything')
     } catch (err) {
       setError(err instanceof Error ? err.message : '初始化失败')
@@ -45,7 +47,7 @@ export default function SetupPage() {
 
         <h1 className="mb-2 text-2xl font-bold text-text">欢迎使用空间管理</h1>
         <p className="mb-8 text-text-secondary">
-          通过3D视角直观地管理家中物品的位置
+          从空房间开始，在 3D 场景中放置和管理容器
         </p>
 
         {error && (
@@ -55,15 +57,15 @@ export default function SetupPage() {
         )}
 
         <button
-          onClick={handleLoadDemo}
+          onClick={() => void handleCreateEmptyRoom()}
           disabled={loading}
           className="w-full rounded-button bg-primary px-6 py-3 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
-          {loading ? '初始化中...' : '加载演示场景'}
+          {loading ? '创建中...' : '创建空房间'}
         </button>
 
         <p className="mt-4 text-xs text-text-secondary">
-          将创建包含8个容器的演示场景
+          将创建 20×20m 空房间，不含任何容器；已有容器会被清空，关联物品的容器归属将置空
         </p>
       </div>
     </div>

@@ -63,6 +63,16 @@ describe('validateItemForm', () => {
     expect(validateItemForm(validInput())).toBeNull()
   })
 
+  it('accepts missing start date', () => {
+    expect(validateItemForm(validInput({ startDate: null }))).toBeNull()
+  })
+
+  it('rejects missing purchase date', () => {
+    expect(validateItemForm(validInput({ purchaseDate: null }))).toBe(
+      'missingPurchaseDate',
+    )
+  })
+
   it('does not require end date', () => {
     const purchaseDate = parseISODate('2026-01-01')
     const startDate = parseISODate('2026-01-01')

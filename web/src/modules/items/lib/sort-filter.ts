@@ -4,6 +4,7 @@ import { parseISODate } from '../../../shared/lib/date-utils'
 import type { Area, Category, Item } from './types'
 
 export function computeItemUsedDays(item: Item, today: Date = new Date()): number {
+  if (!item.startDate) return 0
   const startDate = parseISODate(item.startDate)
   const endDate = item.endDate ? parseISODate(item.endDate) : today
   return usedDays(startDate, endDate)
@@ -66,9 +67,12 @@ export function sortItems(
       case 'purchasePrice':
         cmp = a.purchasePrice - b.purchasePrice
         break
-      case 'startDate':
-        cmp = a.startDate.localeCompare(b.startDate)
+      case 'startDate': {
+        const aDate = a.startDate ?? ''
+        const bDate = b.startDate ?? ''
+        cmp = aDate.localeCompare(bDate)
         break
+      }
     }
     return sortOrder === 'asc' ? cmp : -cmp
   })
@@ -112,7 +116,7 @@ export const SORT_FIELD_LABELS: Record<SortField, string> = {
   createdAt: '创建时间',
   dailyCost: '每日成本',
   purchasePrice: '买入价格',
-  startDate: '开始使用时间',
+  startDate: '开始日期',
 }
 
 export const SORT_ORDER_LABELS: Record<SortOrder, string> = {

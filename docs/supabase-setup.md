@@ -38,13 +38,15 @@ cd web
 SUPABASE_DB_PASSWORD='你的数据库密码' npm run db:migrate
 ```
 
-Migration 文件：
+Migration 文件（按模块合并，脚本按文件名顺序执行全部 SQL，无版本追踪表；语句均尽量幂等）：
 
-1. `20260626100000_initial.sql` — 表结构 + 初始 RLS
-2. `20260626110000_add_units.sql` — 计量单位
-3. `20260626200000_auth_rls.sql` — **Auth 安全**：撤销 anon 权限，仅 authenticated 可读写
+1. `20260626100000_items.sql` — 物品管理：表结构、units、购入日期、sort_order、Auth RLS
+2. `20260701143000_items_start_date_nullable.sql` — 物品 `start_date` 可空（未开始使用可不填）
+3. `20260701150000_units_is_disabled.sql` — 计量单位 `is_disabled` 停用字段
+4. `20260626300000_todos.sql` — 待办模块：表、协商、重复、Realtime 等
+5. `20260630170000_everything.sql` — 3D 场景：containers、区域顶点、模型路径规范化
 
-若已跑过前两个，只需在 SQL Editor 执行第三个，或重新 `db:migrate`（脚本按文件名顺序执行，重复 policy 有 IF NOT EXISTS 保护）。
+若数据库已跑过旧版分散 migration，直接 `db:migrate` 即可；重复执行的 CREATE/ALTER 均有 `IF NOT EXISTS` 等保护。
 
 ## 访问模式
 

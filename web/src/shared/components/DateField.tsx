@@ -130,7 +130,7 @@ export default function DateField({
         )}
       >
         <CalendarDays className="size-4 shrink-0 opacity-60" />
-        <span className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-xs tabular-nums">
+        <span className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-sm tabular-nums">
           {display}
         </span>
       </button>

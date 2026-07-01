@@ -1,17 +1,19 @@
-import { Canvas } from '@react-three/fiber'
+import { Canvas, type RootState } from '@react-three/fiber'
 import { Suspense, useRef } from 'react'
 import FirstPersonCamera from './FirstPersonCamera'
 import Environment from './Environment'
 import Room from './Room'
 import Container3D from './Container3D'
-import ContainerControlsOverlay from '../ui/ContainerControlsOverlay'
+import ContainerControlsTracker from './ContainerControlsTracker'
 import { useContainers } from '../../hooks/use-containers'
+import { ROOM_WALL_COLOR } from '../../lib/room-constants'
 import { DRAG_THRESHOLD_PX, isDragGesture } from '../../lib/scene-controls'
-import { openContainerModal, useSceneStore } from '../../store/scene-store'
+import { openContainerModal, useSceneStore, isContainerPendingDelete } from '../../store/scene-store'
 import LoadingScreen from '../ui/LoadingScreen'
 
 export default function SceneCanvas() {
   const { data: containers, isLoading } = useContainers()
+  const pendingDeleteContainerIds = useSceneStore((s) => s.pendingDeleteContainerIds)
   const setSceneLoading = useSceneStore((s) => s.setSceneLoading)
   const setPointerDragDistance = useSceneStore((s) => s.setPointerDragDistance)
   const resetPointerDrag = useSceneStore((s) => s.resetPointerDrag)
@@ -19,6 +21,14 @@ export default function SceneCanvas() {
 
   const onCreated = () => {
     setSceneLoading(false)
+  }
+
+  function handleCanvasCreated(state: RootState) {
+    state.gl.setClearColor(ROOM_WALL_COLOR)
+    const canvas = state.gl.domElement
+    canvas.style.webkitTouchCallout = 'none'
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault())
+    onCreated()
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -30,6 +40,7 @@ export default function SceneCanvas() {
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const start = pointerStartRef.current
     if (!start) return
+    if (useSceneStore.getState().pointerOnSceneObject) return
     if (isDragGesture(start, { x: e.clientX, y: e.clientY }, DRAG_THRESHOLD_PX)) {
       const dx = e.clientX - start.x
       const dy = e.clientY - start.y
@@ -61,13 +72,16 @@ export default function SceneCanvas() {
         }}
         dpr={[1, 2]}
         performance={{ min: 0.5 }}
-        onCreated={onCreated}
+        onCreated={handleCanvasCreated}
       >
         <Suspense fallback={null}>
           <FirstPersonCamera />
+          <Room />
           <Environment />
 
-          {containers?.map((container) => (
+          {containers
+            ?.filter((c) => !isContainerPendingDelete(c.id, pendingDeleteContainerIds))
+            .map((container) => (
             <Container3D
               key={container.id}
               container={container}
@@ -75,7 +89,7 @@ export default function SceneCanvas() {
             />
           ))}
 
-          <ContainerControlsOverlay />
+          <ContainerControlsTracker />
         </Suspense>
       </Canvas>
     </div>

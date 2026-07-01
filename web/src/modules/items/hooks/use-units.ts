@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toUnit, type DbUnit, type Unit } from '../lib/types'
+import {
+  nextEntitySortOrder,
+  persistEntitySortOrder,
+} from '../../../shared/lib/entity-sort-order'
 import { supabase } from '../../../shared/lib/supabase'
+import { toUnit, type DbUnit, type Unit } from '../lib/types'
 
 export function useUnits() {
   return useQuery({
@@ -12,7 +16,8 @@ export function useUnits() {
       const { data, error } = await supabase
         .from('units')
         .select('*')
-        .order('name')
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
 
       if (error) throw error
       return (data as DbUnit[]).map(toUnit)
@@ -30,11 +35,14 @@ export function useCreateUnit() {
         throw new Error('未配置 Supabase')
       }
 
+      const sortOrder = await nextEntitySortOrder(supabase, 'units')
+
       const { data, error } = await supabase
         .from('units')
         .insert({
           name: input.name,
           is_system_reserved: input.isSystemReserved ?? false,
+          sort_order: sortOrder,
         })
         .select()
         .single()
@@ -52,20 +60,42 @@ export function useUpdateUnit() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: { id: string; name: string }) => {
+    mutationFn: async (input: {
+      id: string
+      name?: string
+      isDisabled?: boolean
+    }) => {
       if (!supabase) {
         throw new Error('未配置 Supabase')
       }
 
+      const update: { name?: string; is_disabled?: boolean } = {}
+      if (input.name !== undefined) update.name = input.name
+      if (input.isDisabled !== undefined) update.is_disabled = input.isDisabled
+
       const { data, error } = await supabase
         .from('units')
-        .update({ name: input.name })
+        .update(update)
         .eq('id', input.id)
         .select()
         .single()
 
       if (error) throw error
       return toUnit(data as DbUnit)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['units'] })
+    },
+  })
+}
+
+export function useReorderUnits() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      if (!supabase) throw new Error('未配置 Supabase')
+      await persistEntitySortOrder(supabase, 'units', orderedIds)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] })

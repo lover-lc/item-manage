@@ -6,6 +6,7 @@ import {
   type DbContainer,
   type Container,
   type ContainerInsert,
+  type Position3D,
 } from '../types/scene-types'
 
 const CONTAINER_SELECT = '*'
@@ -110,12 +111,66 @@ export function useDeleteContainer() {
   })
 }
 
+export function useDeleteAllContainers() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error('未配置 Supabase')
+
+      const { error } = await supabase
+        .from('containers')
+        .delete()
+        .not('id', 'is', null)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['containers'] })
+    },
+  })
+}
+
+export function useDeleteContainersBatch() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!supabase) throw new Error('未配置 Supabase')
+      if (ids.length === 0) return
+
+      const { error } = await supabase.from('containers').delete().in('id', ids)
+
+      if (error) throw error
+    },
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ['containers'] })
+      const previous = queryClient.getQueryData<Container[]>(['containers'])
+      if (previous) {
+        queryClient.setQueryData<Container[]>(
+          ['containers'],
+          previous.filter((c) => !ids.includes(c.id)),
+        )
+      }
+      return { previous }
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['containers'], context.previous)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['containers'] })
+    },
+  })
+}
+
 export function useUpdateContainersBatch() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (
-      updates: Array<{ id: string; position_3d: unknown }>,
+      updates: Array<{ id: string; position_3d: Position3D }>,
     ): Promise<void> => {
       if (!supabase) throw new Error('未配置 Supabase')
 
@@ -127,7 +182,28 @@ export function useUpdateContainersBatch() {
         if (error) throw error
       }
     },
-    onSuccess: () => {
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: ['containers'] })
+      const previous = queryClient.getQueryData<Container[]>(['containers'])
+      if (previous) {
+        const byId = new Map(updates.map((u) => [u.id, u.position_3d]))
+        queryClient.setQueryData<Container[]>(
+          ['containers'],
+          previous.map((c) => {
+            const nextPosition = byId.get(c.id)
+            if (!nextPosition) return c
+            return { ...c, position: nextPosition }
+          }),
+        )
+      }
+      return { previous }
+    },
+    onError: (_err, _updates, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['containers'], context.previous)
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['containers'] })
     },
   })

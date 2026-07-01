@@ -1,6 +1,24 @@
-import { Plus } from 'lucide-react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import SwipeRow from '../../../shared/components/ui/SwipeRow'
+import { cn } from '@/lib/utils'
 import { DEFAULT_TODO_LIST_COLOR } from '../lib/todo-list-colors'
 import type { TodoList } from '../types/todo-types'
 import { ListColorPicker } from './ListColorPicker'
@@ -85,6 +103,63 @@ function NamePromptDialog({
   )
 }
 
+function SortableListRow({
+  list,
+  count,
+  onRename,
+  onDelete,
+}: {
+  list: TodoList
+  count: number
+  onRename: () => void
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: list.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <li ref={setNodeRef} style={style} className={cn(isDragging && 'z-10')}>
+      <SwipeRow onDelete={onDelete} onContentClick={onRename}>
+        <div
+          className={cn(
+            'flex items-center gap-2 bg-card px-4 py-3',
+            isDragging && 'shadow-md ring-1 ring-bg-hover',
+          )}
+        >
+          <button
+            type="button"
+            className="shrink-0 touch-none rounded p-1 text-text-tertiary hover:bg-bg-hover"
+            aria-label="拖动排序"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="size-4" />
+          </button>
+          <span
+            className="size-3 shrink-0 rounded-full"
+            style={{ backgroundColor: list.color ?? DEFAULT_TODO_LIST_COLOR }}
+          />
+          <span className="min-w-0 flex-1 truncate text-sm">{list.name}</span>
+          {list.visibility === 'shared' ? (
+            <span className="shrink-0 rounded-full bg-bg-hover px-2 py-0.5 text-xs text-text-secondary">
+              共享
+            </span>
+          ) : null}
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {count}
+          </span>
+        </div>
+      </SwipeRow>
+    </li>
+  )
+}
+
 function ListSection({
   title,
   lists,
@@ -92,6 +167,7 @@ function ListSection({
   onAdd,
   onRename,
   onDeleteRequest,
+  onReorder,
   emptyText,
 }: {
   title: string
@@ -100,8 +176,27 @@ function ListSection({
   onAdd: () => void
   onRename: (list: TodoList) => void
   onDeleteRequest: (list: TodoList) => void
+  onReorder: (orderedIds: string[]) => void
   emptyText: string
 }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = lists.findIndex((list) => list.id === active.id)
+    const newIndex = lists.findIndex((list) => list.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    onReorder(arrayMove(lists.map((list) => list.id), oldIndex, newIndex))
+  }
+
   return (
     <section>
       <div className="flex items-center justify-between">
@@ -119,35 +214,28 @@ function ListSection({
       {lists.length === 0 ? (
         <p className="py-6 text-center text-sm text-text-secondary">{emptyText}</p>
       ) : (
-        <ul className="mt-3 space-y-2">
-          {lists.map((list) => {
-            const count = todoCounts[list.id] ?? 0
-            return (
-              <li key={list.id}>
-                <SwipeRow
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={lists.map((list) => list.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="mt-3 space-y-2">
+              {lists.map((list) => (
+                <SortableListRow
+                  key={list.id}
+                  list={list}
+                  count={todoCounts[list.id] ?? 0}
+                  onRename={() => onRename(list)}
                   onDelete={() => onDeleteRequest(list)}
-                  onContentClick={() => onRename(list)}
-                >
-                  <div className="flex items-center gap-2 bg-card px-4 py-3">
-                    <span
-                      className="size-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: list.color ?? DEFAULT_TODO_LIST_COLOR }}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm">{list.name}</span>
-                    {list.visibility === 'shared' ? (
-                      <span className="shrink-0 rounded-full bg-bg-hover px-2 py-0.5 text-xs text-text-secondary">
-                        共享
-                      </span>
-                    ) : null}
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      {count}
-                    </span>
-                  </div>
-                </SwipeRow>
-              </li>
-            )
-          })}
-        </ul>
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
     </section>
   )
@@ -160,6 +248,8 @@ type TodoListManageProps = {
   onAddShared?: (name: string, color: string) => Promise<void>
   onRename: (id: string, name: string, color: string) => Promise<void>
   onDeleteRequest: (list: TodoList) => void
+  onReorderPrivate: (orderedIds: string[]) => void
+  onReorderShared: (orderedIds: string[]) => void
   isLoading?: boolean
 }
 
@@ -170,6 +260,8 @@ export default function TodoListManage({
   onAddShared,
   onRename,
   onDeleteRequest,
+  onReorderPrivate,
+  onReorderShared,
   isLoading = false,
 }: TodoListManageProps) {
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -177,8 +269,12 @@ export default function TodoListManage({
   const [listToRename, setListToRename] = useState<TodoList | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const privateLists = lists.filter((l) => l.visibility === 'private')
-  const sharedLists = lists.filter((l) => l.visibility === 'shared')
+  const privateLists = lists
+    .filter((l) => l.visibility === 'private')
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  const sharedLists = lists
+    .filter((l) => l.visibility === 'shared')
+    .sort((a, b) => a.sortOrder - b.sortOrder)
 
   async function handleAdd(name: string, color: string) {
     setIsSubmitting(true)
@@ -223,6 +319,7 @@ export default function TodoListManage({
           }}
           onRename={setListToRename}
           onDeleteRequest={onDeleteRequest}
+          onReorder={onReorderPrivate}
         />
 
         {onAddShared ? (
@@ -237,6 +334,7 @@ export default function TodoListManage({
             }}
             onRename={setListToRename}
             onDeleteRequest={onDeleteRequest}
+            onReorder={onReorderShared}
           />
         ) : null}
       </div>
